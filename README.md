@@ -30,3 +30,8 @@ LLD
 <img width="2532" height="2349" alt="image" src="https://github.com/user-attachments/assets/e6fa1c32-03a2-4eb6-a3ef-ec4ef1d28053" />
 
 
+API Contracts
+
+<img width="2076" height="1721" alt="diagram-export-20-02-2026-15_08_30" src="https://github.com/user-attachments/assets/00100229-752a-426a-9999-c83122371274" />
+
+
