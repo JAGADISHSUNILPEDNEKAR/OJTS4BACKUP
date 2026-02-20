@@ -1,0 +1,683 @@
+# Origin – Agricultural Supply Chain Fraud Detection System
+## Entity Relationship Diagram (ERD)
+
+```mermaid
+erDiagram
+
+    Organization {
+        uuid id PK
+        string legal_name
+        string trade_name
+        string tax_id
+        string hq_country
+        string hq_address
+        string primary_email
+        string primary_phone
+        string website
+        string org_type
+        string kyc_status
+        string status
+        decimal escrow_limit_satoshis
+        string bitcoin_public_key
+        string custodial_wallet_address
+        string s3_document_key
+        timestamp kyc_verified_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    User {
+        uuid id PK
+        uuid org_id FK
+        uuid role_id FK
+        string first_name
+        string last_name
+        string email
+        string phone
+        string password_hash
+        string status
+        boolean email_verified
+        boolean phone_verified
+        boolean totp_enabled
+        string totp_secret_encrypted
+        string bitcoin_public_key
+        string bitcoin_wallet_address
+        string key_custody_type
+        integer failed_login_attempts
+        timestamp locked_until
+        timestamp last_login_at
+        string preferred_language
+        string onboarding_status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Role {
+        uuid id PK
+        string name
+        string description
+        boolean is_system_role
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Permission {
+        uuid id PK
+        string resource
+        string action
+        string description
+        timestamp created_at
+    }
+
+    RolePermission {
+        uuid id PK
+        uuid role_id FK
+        uuid permission_id FK
+        timestamp created_at
+    }
+
+    Session {
+        uuid id PK
+        uuid user_id FK
+        string jwt_jti
+        string refresh_token_hash
+        string device_fingerprint
+        string ip_address
+        string user_agent
+        string sso_provider
+        boolean is_2fa_verified
+        boolean is_ml_monitored
+        boolean remember_device
+        timestamp expires_at
+        timestamp created_at
+        timestamp revoked_at
+    }
+
+    BackupCode {
+        uuid id PK
+        uuid user_id FK
+        string code_hash
+        boolean used
+        timestamp used_at
+        timestamp created_at
+    }
+
+    KycSubmission {
+        uuid id PK
+        uuid user_id FK
+        uuid org_id FK
+        integer attempt_number
+        string document_type
+        string issuing_country
+        string front_image_s3_key
+        string back_image_s3_key
+        string status
+        decimal ml_confidence_score
+        string rejection_reason
+        boolean requires_manual_review
+        string reviewed_by_user_id
+        timestamp reviewed_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Shipment {
+        uuid id PK
+        string shipment_ref
+        uuid shipper_org_id FK
+        uuid carrier_org_id FK
+        uuid buyer_org_id FK
+        string origin_port
+        string destination_port
+        string cargo_category
+        decimal weight_kg
+        text manifest_description
+        string status
+        string draft_id
+        decimal ml_precheck_risk_score
+        jsonb ml_precheck_insights
+        string planned_route_polyline
+        decimal cumulative_temp_exposure
+        decimal cumulative_humidity_exposure
+        timestamp estimated_departure
+        timestamp actual_departure
+        timestamp estimated_arrival
+        timestamp actual_arrival
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ShipmentManifest {
+        uuid id PK
+        uuid shipment_id FK
+        string file_name
+        string s3_key
+        string file_type
+        decimal file_size_bytes
+        string uploaded_by_user_id
+        timestamp created_at
+    }
+
+    CustodyEvent {
+        uuid id PK
+        uuid shipment_id FK
+        uuid from_org_id FK
+        uuid to_org_id FK
+        uuid logged_by_user_id FK
+        string event_type
+        decimal latitude
+        decimal longitude
+        string location_name
+        string ecdsa_signature
+        string public_key_used
+        string previous_event_hash
+        string event_hash
+        boolean is_scheduled
+        string status
+        text notes
+        timestamp event_timestamp
+        timestamp created_at
+    }
+
+    IoTDevice {
+        uuid id PK
+        uuid org_id FK
+        string device_serial
+        string device_type
+        string manufacturer
+        string firmware_version
+        string public_key
+        string status
+        timestamp last_heartbeat_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ShipmentIoTBinding {
+        uuid id PK
+        uuid shipment_id FK
+        uuid iot_device_id FK
+        timestamp bound_at
+        timestamp unbound_at
+        string bound_by_user_id
+    }
+
+    SensorReading {
+        uuid id PK
+        uuid iot_device_id FK
+        uuid shipment_id FK
+        decimal temperature_celsius
+        decimal humidity_percent
+        decimal latitude
+        decimal longitude
+        decimal altitude_m
+        decimal tilt_degrees
+        string raw_payload_hash
+        boolean is_tamper_flagged
+        timestamp recorded_at
+        timestamp ingested_at
+    }
+
+    Certificate {
+        uuid id PK
+        uuid issuing_org_id FK
+        uuid shipment_id FK
+        string certificate_type
+        string certificate_number
+        string issuing_authority
+        string issued_country
+        string s3_key
+        string status
+        string merkle_leaf_hash
+        string bitcoin_txid
+        timestamp issued_at
+        timestamp expires_at
+        timestamp verified_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    MlModel {
+        uuid id PK
+        string model_name
+        string model_type
+        string version
+        string artifact_s3_key
+        decimal precision_score
+        decimal recall_score
+        decimal f1_score
+        string status
+        timestamp trained_at
+        timestamp deployed_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    MlInferenceResult {
+        uuid id PK
+        uuid ml_model_id FK
+        uuid shipment_id FK
+        string inference_type
+        decimal risk_score
+        decimal confidence_percent
+        jsonb feature_importances
+        jsonb raw_output
+        text explanation
+        string triggered_by
+        boolean alert_generated
+        timestamp inferred_at
+        timestamp created_at
+    }
+
+    ParticipantRiskScore {
+        uuid id PK
+        uuid org_id FK
+        uuid ml_model_id FK
+        decimal risk_score
+        string risk_tier
+        jsonb contributing_factors
+        integer fraud_incident_count
+        integer dispute_count
+        integer total_shipments
+        timestamp scored_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Alert {
+        uuid id PK
+        uuid shipment_id FK
+        uuid ml_inference_result_id FK
+        uuid assigned_to_user_id FK
+        string alert_type
+        string severity
+        string status
+        decimal ml_confidence_percent
+        decimal estimated_loss_value
+        decimal current_sensor_reading
+        string sensor_reading_unit
+        integer time_in_breach_seconds
+        jsonb recommended_actions
+        boolean escrow_held
+        string acknowledged_by_user_id
+        timestamp acknowledged_at
+        timestamp resolved_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AlertComment {
+        uuid id PK
+        uuid alert_id FK
+        uuid user_id FK
+        text comment_body
+        string s3_attachment_key
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    EscrowAgreement {
+        uuid id PK
+        uuid shipment_id FK
+        uuid buyer_org_id FK
+        uuid seller_org_id FK
+        uuid financier_org_id FK
+        string multisig_type
+        integer required_signatures
+        integer total_signatories
+        decimal amount_satoshis
+        string currency
+        string status
+        text release_conditions
+        string buyer_pubkey
+        string seller_pubkey
+        string financier_pubkey
+        string redeem_script
+        string multisig_address
+        decimal ml_risk_score
+        timestamp release_deadline
+        timestamp funded_at
+        timestamp released_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    EscrowTranche {
+        uuid id PK
+        uuid escrow_agreement_id FK
+        integer tranche_number
+        decimal amount_satoshis
+        string release_trigger_type
+        text release_condition_description
+        string status
+        string iot_condition_metric
+        decimal iot_condition_threshold
+        timestamp expected_release_at
+        timestamp released_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PsbtTransaction {
+        uuid id PK
+        uuid escrow_agreement_id FK
+        uuid escrow_tranche_id FK
+        string psbt_type
+        text psbt_base64
+        string status
+        integer signatures_collected
+        integer signatures_required
+        string finalized_txid
+        integer broadcast_attempts
+        timestamp broadcast_at
+        timestamp confirmed_at
+        integer confirmation_block_height
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PsbtSignature {
+        uuid id PK
+        uuid psbt_transaction_id FK
+        uuid user_id FK
+        uuid org_id FK
+        string public_key
+        text signature_hex
+        string signed_psbt_base64
+        timestamp signed_at
+        timestamp created_at
+    }
+
+    MerkleTree {
+        uuid id PK
+        string batch_ref
+        string merkle_root_hash
+        integer leaf_count
+        string algorithm
+        string status
+        timestamp batch_started_at
+        timestamp batch_completed_at
+        timestamp created_at
+    }
+
+    MerkleLeaf {
+        uuid id PK
+        uuid merkle_tree_id FK
+        string entity_type
+        uuid entity_id
+        string leaf_hash
+        jsonb proof_path
+        integer leaf_index
+        boolean committed_to_bitcoin
+        timestamp created_at
+    }
+
+    BitcoinCommitment {
+        uuid id PK
+        uuid merkle_tree_id FK
+        string txid
+        string op_return_payload
+        string network
+        integer block_height
+        string block_hash
+        integer confirmations
+        string status
+        integer retry_count
+        decimal fee_satoshis
+        string proof_url
+        timestamp broadcast_at
+        timestamp confirmed_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ProofDocument {
+        uuid id PK
+        uuid shipment_id FK
+        uuid generated_by_user_id FK
+        uuid merkle_tree_id FK
+        uuid bitcoin_commitment_id FK
+        string document_type
+        string s3_key
+        string presigned_url
+        timestamp presigned_url_expires_at
+        timestamp generated_at
+        timestamp created_at
+    }
+
+    AuditReport {
+        uuid id PK
+        uuid shipment_id FK
+        uuid assigned_auditor_id FK
+        uuid created_by_user_id FK
+        string status
+        string audit_type
+        decimal ml_confidence_percent
+        integer pass_rate_percent
+        integer critical_issue_count
+        string merkle_proof_hash
+        text summary
+        string sign_off_signature
+        timestamp signed_off_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AuditFinding {
+        uuid id PK
+        uuid audit_report_id FK
+        uuid ml_inference_result_id FK
+        string finding_type
+        string severity
+        text description
+        text recommendation
+        string status
+        string resolved_by_user_id
+        timestamp resolved_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AuditAttachment {
+        uuid id PK
+        uuid audit_report_id FK
+        uuid uploaded_by_user_id FK
+        string file_name
+        string s3_key
+        string file_type
+        decimal file_size_bytes
+        timestamp created_at
+    }
+
+    RemediationTask {
+        uuid id PK
+        uuid audit_report_id FK
+        uuid audit_finding_id FK
+        uuid assigned_to_user_id FK
+        string title
+        text description
+        string status
+        string priority
+        timestamp due_at
+        timestamp completed_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Dispute {
+        uuid id PK
+        uuid shipment_id FK
+        uuid escrow_agreement_id FK
+        uuid raised_by_user_id FK
+        uuid raised_by_org_id FK
+        uuid assigned_auditor_id FK
+        uuid alert_id FK
+        string dispute_type
+        string status
+        text reason
+        string auditor_determination
+        text auditor_notes
+        boolean escrow_held
+        boolean flag_upheld
+        boolean external_arbitration
+        timestamp sla_deadline
+        timestamp auditor_assigned_at
+        timestamp resolved_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    DisputeEvidence {
+        uuid id PK
+        uuid dispute_id FK
+        uuid submitted_by_user_id FK
+        string evidence_type
+        text description
+        string s3_key
+        timestamp created_at
+    }
+
+    Notification {
+        uuid id PK
+        uuid user_id FK
+        uuid org_id FK
+        string notification_type
+        string channel
+        string title
+        text body
+        string related_entity_type
+        uuid related_entity_id
+        string severity
+        boolean read
+        timestamp sent_at
+        timestamp read_at
+        timestamp created_at
+    }
+
+    NotificationPreference {
+        uuid id PK
+        uuid user_id FK
+        string notification_type
+        boolean email_enabled
+        boolean sms_enabled
+        boolean push_enabled
+        boolean in_app_enabled
+        string min_severity_threshold
+        boolean digest_mode
+        string quiet_hours_start
+        string quiet_hours_end
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    QrScanEvent {
+        uuid id PK
+        uuid shipment_id FK
+        uuid certificate_id FK
+        string scanner_device_id
+        decimal scan_latitude
+        decimal scan_longitude
+        string ip_address
+        string user_agent
+        string result_status
+        timestamp scanned_at
+        timestamp created_at
+    }
+
+    AuditLog {
+        uuid id PK
+        uuid user_id FK
+        uuid org_id FK
+        string action
+        string entity_type
+        uuid entity_id
+        jsonb old_value
+        jsonb new_value
+        string ip_address
+        string user_agent
+        string outcome
+        timestamp created_at
+    }
+
+    Organization ||--o{ User : "employs"
+    Organization ||--o{ Shipment : "ships_as_shipper"
+    Organization ||--o{ Shipment : "carries_as_carrier"
+    Organization ||--o{ Shipment : "buys_as_buyer"
+    Organization ||--o{ IoTDevice : "owns"
+    Organization ||--o{ Certificate : "issues"
+    Organization ||--o{ EscrowAgreement : "participates_as_buyer"
+    Organization ||--o{ EscrowAgreement : "participates_as_seller"
+    Organization ||--o{ EscrowAgreement : "finances"
+    Organization ||--o{ CustodyEvent : "hands_off_from"
+    Organization ||--o{ CustodyEvent : "receives_as_to"
+    Organization ||--|| ParticipantRiskScore : "has_risk_score"
+    Organization ||--o{ KycSubmission : "submits"
+    Organization ||--o{ Dispute : "raises"
+    Organization ||--o{ PsbtSignature : "signs_via"
+    Organization ||--o{ Notification : "receives"
+
+    Role ||--o{ RolePermission : "grants"
+    Permission ||--o{ RolePermission : "included_in"
+    Role ||--o{ User : "assigned_to"
+
+    User ||--o{ Session : "creates"
+    User ||--o{ BackupCode : "holds"
+    User ||--o{ KycSubmission : "submits"
+    User ||--o{ CustodyEvent : "logs"
+    User ||--o{ AlertComment : "writes"
+    User ||--o{ PsbtSignature : "provides"
+    User ||--o{ AuditReport : "conducts"
+    User ||--o{ ProofDocument : "generates"
+    User ||--o{ DisputeEvidence : "submits"
+    User ||--o{ Dispute : "raises"
+    User ||--o{ Dispute : "assigned_as_auditor"
+    User ||--o{ Alert : "assigned_to"
+    User ||--o{ RemediationTask : "assigned_to"
+    User ||--o{ NotificationPreference : "configures"
+    User ||--o{ Notification : "receives"
+    User ||--o{ AuditLog : "generates"
+    User ||--o{ AuditAttachment : "uploads"
+
+    Shipment ||--o{ ShipmentManifest : "has"
+    Shipment ||--o{ CustodyEvent : "tracked_through"
+    Shipment ||--o{ ShipmentIoTBinding : "bound_to"
+    Shipment ||--o{ SensorReading : "generates"
+    Shipment ||--o{ Certificate : "certified_by"
+    Shipment ||--o{ MlInferenceResult : "evaluated_by"
+    Shipment ||--o{ Alert : "triggers"
+    Shipment ||--|| EscrowAgreement : "secured_by"
+    Shipment ||--o{ AuditReport : "audited_in"
+    Shipment ||--o{ Dispute : "disputed_in"
+    Shipment ||--o{ ProofDocument : "has_proof"
+    Shipment ||--o{ QrScanEvent : "scanned_in"
+
+    IoTDevice ||--o{ ShipmentIoTBinding : "bound_in"
+    IoTDevice ||--o{ SensorReading : "emits"
+
+    MlModel ||--o{ MlInferenceResult : "produces"
+    MlModel ||--o{ ParticipantRiskScore : "scores_in"
+    MlInferenceResult ||--o{ Alert : "generates"
+    MlInferenceResult ||--o{ AuditFinding : "detected_in"
+
+    Alert ||--o{ AlertComment : "discussed_in"
+    Alert ||--o{ Dispute : "disputed_via"
+
+    EscrowAgreement ||--o{ EscrowTranche : "structured_as"
+    EscrowAgreement ||--o{ PsbtTransaction : "executed_via"
+    EscrowAgreement ||--o{ Dispute : "disputed_in"
+    EscrowTranche ||--o{ PsbtTransaction : "settled_by"
+    PsbtTransaction ||--o{ PsbtSignature : "signed_by"
+
+    MerkleTree ||--o{ MerkleLeaf : "contains"
+    MerkleTree ||--|| BitcoinCommitment : "anchored_in"
+    MerkleTree ||--o{ ProofDocument : "referenced_in"
+
+    AuditReport ||--o{ AuditFinding : "contains"
+    AuditReport ||--o{ AuditAttachment : "evidenced_by"
+    AuditReport ||--o{ RemediationTask : "tracks"
+    AuditFinding ||--o{ RemediationTask : "addressed_by"
+
+    Dispute ||--o{ DisputeEvidence : "supported_by"
+
+    Certificate ||--o{ QrScanEvent : "verified_in"
+```
