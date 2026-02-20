@@ -6,3 +6,4 @@ EDD/TDD - Notion - https://www.notion.so/EDD-TDD-Origin-30c34968c801807cbf7cc3ca
           
           
           
+ERD - https://dbdiagram.io/d/6997df58bd82f5fce2417e30
