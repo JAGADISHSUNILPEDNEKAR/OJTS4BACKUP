@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bitcoind-testnet
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bitcoind
+  template:
+    metadata:
+      labels:
+        app: bitcoind
+    spec:
+      containers:
+        - name: bitcoind
+          image: ruimarinho/bitcoin-core:25.0
+          args: ["-testnet", "-txindex", "-server", "-rpcuser=admin", "-rpcpassword=admin"]
+          ports:
+            - containerPort: 18332
+              name: rpc
