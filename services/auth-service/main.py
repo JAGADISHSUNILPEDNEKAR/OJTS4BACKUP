@@ -1,40 +1,61 @@
+import uuid
+from datetime import timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
-from pydantic import BaseModel
-import jwt
-import redis
-from datetime import datetime, timedelta
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
+from database import engine, Base, get_db
+from models import User
+from schemas import LoginRequest, Token
+from core.security import verify_password, create_access_token
+from core.config import settings
 
 app = FastAPI(title="Origin Auth Service")
 
-# Mock Redis connection for account lockout
-# redis_client = redis.Redis(host='redis', port=6379, db=0)
+@app.on_event("startup")
+async def startup_event():
+    # Only for development structure creating - normally Alembic handles this.
+    async with engine.begin() as conn:
+        # await conn.run_sync(Base.metadata.create_all)
+        pass
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-    totp_code: str | None = None
+@app.post("/api/v1/auth/login", response_model=Token)
+async def login(
+    request: LoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    # Fetch user from DB
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    if not verify_password(request.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
 
-@app.post("/api/v1/auth/login")
-async def login(request: LoginRequest):
-    # Dummy implementation for Auth Service execution
-    # 1. Check account lockout
-    # if redis_client.get(f"lockout:{request.email}"):
-    #     raise HTTPException(status_code=403, detail="Account locked")
+    # Generate JWT
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        subject=str(user.id),
+        role=user.role,
+        org_id=str(user.organization_id) if user.organization_id else None,
+        expires_delta=access_token_expires
+    )
     
-    # 2. Verify credentials vs DB (mocked)
-    if request.password != "password": 
-        # redis_client.incr(f"attempts:{request.email}")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # 3. Generate JWT RS256 (Mocked using HS256 and hardcoded secret for now, in prod fetch from Vault)
-    payload = {
-        "sub": "mock-user-uuid",
-        "role": "USER",
-        "exp": datetime.utcnow() + timedelta(hours=1)
-    }
-    encoded_jwt = jwt.encode(payload, "dummy-secret-from-vault", algorithm="HS256")
-    
-    return {"access_token": encoded_jwt, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/v1/auth/sso")
 async def sso_login():
