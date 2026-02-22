@@ -1,15 +1,18 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import logging
-# from kafka import KafkaConsumer
+import asyncio
+from api import router as escrow_router
+from consumer import consume_alerts
 
-app = FastAPI(title="Origin Escrow Service")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("escrow-service")
 
-@app.post("/api/v1/escrow/dispute")
-async def flag_dispute(shipment_id: str):
-    logger.info(f"Flagging dispute for shipment {shipment_id}")
-    return {"status": "DISPUTED", "shipment_id": shipment_id}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(consume_alerts())
+    yield
+    task.cancel()
 
-# TODO: Consumer for `alert.created` to flag disputes automatically.
-# TODO: APIs to trigger PSBT flow via Crypto Service.
+app = FastAPI(title="Origin Escrow Service", lifespan=lifespan)
+app.include_router(escrow_router, prefix="/api/v1/escrow")
