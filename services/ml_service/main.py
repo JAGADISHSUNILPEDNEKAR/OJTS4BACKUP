@@ -1,8 +1,8 @@
 import asyncio
 import logging
 from fastapi import FastAPI
-from .core.kafka import start_kafka_producer, stop_kafka_producer, consume_events
-from .models.inference import inference_engine
+from core.kafka import start_kafka_producer, stop_kafka_producer, consume_events
+from models.inference import inference_engine
 
 logger = logging.getLogger("ml-service")
 

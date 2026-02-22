@@ -1,9 +1,9 @@
 import json
 import logging
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from .config import settings
-from ..evaluator.threshold import evaluate
-from ..notifications.dispatcher import dispatch_alert
+from core.config import settings
+from evaluator.threshold import evaluate
+from notifications.dispatcher import dispatch_alert
 
 logger = logging.getLogger(__name__)
 

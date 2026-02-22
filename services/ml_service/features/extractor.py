@@ -1,7 +1,7 @@
 import logging
 from sqlalchemy import text
 from typing import Dict, Any
-from ..core.database import AsyncSessionLocal
+from core.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

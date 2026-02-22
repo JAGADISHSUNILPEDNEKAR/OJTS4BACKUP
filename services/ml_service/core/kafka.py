@@ -1,9 +1,9 @@
 import json
 import logging
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from .config import settings
-from ..features.extractor import extract_features
-from ..models.inference import inference_engine
+from core.config import settings
+from features.extractor import extract_features
+from models.inference import inference_engine
 
 logger = logging.getLogger(__name__)
 

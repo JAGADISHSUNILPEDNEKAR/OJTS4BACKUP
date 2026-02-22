@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from fastapi import FastAPI
-from .core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results
+from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results
 
 logger = logging.getLogger("alert-service")
 
