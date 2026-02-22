@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[ext]
+asyncpg
+pydantic
+pydantic-settings
+python-dotenv
+aiokafka
+psycopg2-binary
+ecdsa
+aiokafka
+PyJWT
+email-validator
+python-multipart

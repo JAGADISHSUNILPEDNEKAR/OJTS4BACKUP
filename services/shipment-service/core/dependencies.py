@@ -4,7 +4,7 @@ import jwt
 from pydantic import ValidationError
 from typing import List
 
-from .config import settings
+from core.config import settings
 from schemas import TokenData, CurrentUser
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")

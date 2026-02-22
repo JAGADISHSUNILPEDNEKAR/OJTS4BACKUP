@@ -11,6 +11,7 @@ from aiokafka import AIOKafkaProducer
 from database import engine, get_db, Base
 from models import SensorReading
 from schemas import BulkTelemetryUpload
+from core.config import settings
 
 app = FastAPI(title="Origin IoT Ingestion Service")
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ async def startup_event():
         
     global producer
     producer = AIOKafkaProducer(
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
     try:
