@@ -1,68 +1,107 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function ShipmentsPage() {
+    const filters = ['All Shipments', 'In Transit', 'Delivered', 'On Hold', 'Flagged'];
+    const activeFilter = 'All Shipments';
+
+    const shipments = [
+        { id: 'SHP-99128', origin: 'Marseille, FR', dest: 'Port Said, EG', client: 'AgriCorp Global', status: 'In Transit', risk: 12, date: 'Oct 24, 2024' },
+        { id: 'SHP-99127', origin: 'Santos, BR', dest: 'Rotterdam, NL', client: 'TerraLogistics', status: 'Delivered', risk: 5, date: 'Oct 23, 2024' },
+        { id: 'SHP-99126', origin: 'Vancouver, CA', dest: 'Yokohama, JP', client: 'PacOcean', status: 'On Hold', risk: 65, date: 'Oct 22, 2024' },
+        { id: 'SHP-99125', origin: 'Genoa, IT', dest: 'Dubai, AE', client: 'EuroProduce', status: 'In Transit', risk: 18, date: 'Oct 22, 2024' },
+        { id: 'SHP-99124', origin: 'Qingdao, CN', dest: 'Los Angeles, US', client: 'SinoTrans', status: 'In Transit', risk: 24, date: 'Oct 21, 2024' },
+        { id: 'SHP-99123', origin: 'Bergen, NO', dest: 'London, UK', client: 'NordicTrade', status: 'Delivered', risk: 2, date: 'Oct 20, 2024' },
+    ];
+
     return (
         <DashboardLayout
             title="Shipment Management"
-            description="Track and manage global agricultural shipments and their verification status."
+            description="End-to-end telemetry and verification for global asset transfers."
         >
-            <div className="glass-panel animate-fade-in" style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Active Shipments</h2>
+            <div className="card" style={{ padding: '0' }}>
+                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                        {filters.map(filter => (
+                            <button key={filter} style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: '0.5rem 0',
+                                fontSize: '0.875rem',
+                                fontWeight: activeFilter === filter ? 700 : 500,
+                                color: activeFilter === filter ? 'var(--primary)' : 'var(--text-muted)',
+                                borderBottom: activeFilter === filter ? '2px solid var(--primary)' : '2px solid transparent',
+                                cursor: 'pointer',
+                                transition: 'all var(--transition-fast)'
+                            }}>
+                                {filter}
+                            </button>
+                        ))}
+                    </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <input
-                            type="text"
-                            placeholder="Search ID, Origin..."
-                            style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: 'var(--glass-border)',
-                                borderRadius: '6px',
-                                padding: '0.5rem 1rem',
-                                color: 'white',
-                                outline: 'none'
-                            }}
-                        />
-                        <button style={{ background: 'var(--primary)', border: 'none', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}>
-                            New Shipment
+                        <button className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Export Ledger
                         </button>
                     </div>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                            <th className="text-muted" style={{ paddingBottom: '1rem', fontWeight: 600 }}>SHIPMENT ID</th>
-                            <th className="text-muted" style={{ paddingBottom: '1rem', fontWeight: 600 }}>ORIGIN</th>
-                            <th className="text-muted" style={{ paddingBottom: '1rem', fontWeight: 600 }}>DESTINATION</th>
-                            <th className="text-muted" style={{ paddingBottom: '1rem', fontWeight: 600 }}>STATUS</th>
-                            <th className="text-muted" style={{ paddingBottom: '1rem', fontWeight: 600 }}>VERIFICATION</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {[
-                            { id: 'SHP-9021', origin: 'Finca Vista, CR', dest: 'Rotterdam, NL', status: 'In Transit', badge: 'badge-info', ml: 'Clean' },
-                            { id: 'SHP-9020', origin: 'Hacienda Sol, CO', dest: 'Hamburg, DE', status: 'Delivered', badge: 'badge-success', ml: 'Clean' },
-                            { id: 'SHP-9019', origin: 'Cooperativa Alta, GU', dest: 'Laredo, US', status: 'Flagged', badge: 'badge-danger', ml: 'Anomaly (Temp)' },
-                            { id: 'SHP-9018', origin: 'Santa Rosa, BR', dest: 'Shanghai, CN', status: 'In Transit', badge: 'badge-info', ml: 'Clean' },
-                            { id: 'SHP-9017', origin: 'Villa Rica, PE', dest: 'Le Havre, FR', status: 'Processing', badge: 'badge-warning', ml: 'Pending' }
-                        ].map((row, i) => (
-                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background var(--transition-fast)' }}>
-                                <td style={{ padding: '1.25rem 0', fontWeight: 600 }}>{row.id}</td>
-                                <td style={{ padding: '1.25rem 0', color: 'var(--text-muted)' }}>{row.origin}</td>
-                                <td style={{ padding: '1.25rem 0', color: 'var(--text-muted)' }}>{row.dest}</td>
-                                <td style={{ padding: '1.25rem 0' }}><span className={`badge ${row.badge}`}>{row.status}</span></td>
-                                <td style={{ padding: '1.25rem 0' }}>
-                                    {row.ml === 'Clean' ?
-                                        (<span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Validated</span>) :
-                                        row.ml === 'Pending' ?
-                                            (<span style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> {row.ml}</span>) :
-                                            (<span style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> {row.ml}</span>)
-                                    }
-                                </td>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Shipment ID</th>
+                                <th>Origin / Destination</th>
+                                <th>Client Entity</th>
+                                <th>Status</th>
+                                <th>Risk Score</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {shipments.map((shp, i) => (
+                                <tr key={i}>
+                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{shp.id}</td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontWeight: 600 }}>{shp.origin}</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                            <span style={{ color: 'var(--text-muted)' }}>{shp.dest}</span>
+                                        </div>
+                                    </td>
+                                    <td style={{ fontWeight: 500 }}>{shp.client}</td>
+                                    <td>
+                                        <span className={`badge ${shp.status === 'Delivered' ? 'badge-success' : shp.status === 'On Hold' ? 'badge-danger' : 'badge-primary'}`}>
+                                            {shp.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ flex: 1, height: '6px', background: '#f1f5f9', borderRadius: '3px', width: '80px' }}>
+                                                <div style={{ height: '100%', width: `${shp.risk}%`, background: shp.risk > 50 ? 'var(--danger)' : shp.risk > 20 ? 'var(--warning)' : 'var(--secondary)', borderRadius: '3px' }}></div>
+                                            </div>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{shp.risk}%</span>
+                                        </div>
+                                    </td>
+                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{shp.date}</td>
+                                    <td>
+                                        <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>Showing 6 of 1,284 shipments</p>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>Previous</button>
+                        <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>Next</button>
+                    </div>
+                </div>
             </div>
         </DashboardLayout>
     );
