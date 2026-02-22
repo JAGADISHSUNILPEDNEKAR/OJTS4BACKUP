@@ -1,11 +1,14 @@
+#[allow(dead_code)]
 pub struct PsbtService;
 
 impl PsbtService {
+    #[allow(dead_code)]
     pub fn create_multisig_psbt(&self, shipment_id: &str) -> String {
         log::info!("Creating dummy 2-of-3 PSBT for shipment {}", shipment_id);
         "base64_psbt_stub".to_string()
     }
 
+    #[allow(dead_code)]
     pub fn finalize_and_broadcast(&self, _psbt_base64: &str) -> Result<String, String> {
         log::info!("Finalizing PSBT and broadcasting...");
         Ok("broadcast_txid".to_string())

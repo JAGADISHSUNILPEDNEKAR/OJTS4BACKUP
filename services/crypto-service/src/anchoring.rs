@@ -4,6 +4,7 @@ pub trait AnchoringService {
     fn anchor_root(&self, root: &[u8]) -> Result<String, String>;
 }
 
+#[allow(dead_code)]
 pub struct BitcoinClienWrapper {
     client: Client,
 }
@@ -27,7 +28,7 @@ pub struct MockAnchoringService;
 impl AnchoringService for MockAnchoringService {
     fn anchor_root(&self, root: &[u8]) -> Result<String, String> {
         log::info!("[Mock] Anchoring Merkle root: {:?}", root);
-        Ok(format!("mock_txid"))
+        Ok("mock_txid".to_string())
     }
 }
 
