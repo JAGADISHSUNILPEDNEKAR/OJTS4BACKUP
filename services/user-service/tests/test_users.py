@@ -28,14 +28,14 @@ class MockResult:
 
 class MockSession:
     async def execute(self, query, *args, **kwargs):
-        from datetime import datetime
+        from datetime import datetime, timezone
         user = User(
             id=MOCK_USER_ID,
             email="admin@origin.app",
             role="ADMIN",
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         return MockResult(user)
 
@@ -43,14 +43,14 @@ async def override_get_db():
     yield MockSession()
 
 async def override_get_current_user():
-    from datetime import datetime
+    from datetime import datetime, timezone
     return User(
         id=MOCK_USER_ID,
         email="admin@origin.app",
         role="ADMIN",
         is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
 
 app.dependency_overrides[get_db] = override_get_db
