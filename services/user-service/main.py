@@ -9,6 +9,7 @@ from database import engine, get_db, Base
 from models import User, Organization
 from schemas import UserResponse, UserUpdate
 from core.dependencies import get_current_user_from_token, RoleChecker
+from core.config import settings
 
 app = FastAPI(title="Origin User Service")
 
@@ -18,7 +19,7 @@ producer: AIOKafkaProducer = None
 async def startup_event():
     global producer
     producer = AIOKafkaProducer(
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
     # Don't fail if Kafka is not running locally for the test

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/origin"
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

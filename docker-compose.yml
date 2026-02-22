@@ -59,7 +59,7 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - REDIS_URL=redis://redis:6379
 
   user-service:
@@ -68,7 +68,7 @@ services:
     ports:
       - "8002:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
 
   shipment-service:
     build:
@@ -76,7 +76,7 @@ services:
     ports:
       - "8003:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
   iot-ingestion-service:
@@ -85,7 +85,7 @@ services:
     ports:
       - "8004:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
   ml-service:
@@ -94,7 +94,7 @@ services:
     ports:
       - "8005:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
   alert-service:
@@ -103,7 +103,7 @@ services:
     ports:
       - "8006:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
   escrow-service:
@@ -112,7 +112,7 @@ services:
     ports:
       - "8007:8000"
     environment:
-      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
 volumes:

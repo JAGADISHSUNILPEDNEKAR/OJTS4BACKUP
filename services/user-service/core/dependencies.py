@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
 
-from .config import settings
+from core.config import settings
 from schemas import TokenData
 from database import get_db
 from models import User
