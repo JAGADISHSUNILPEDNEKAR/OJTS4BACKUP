@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+aiokafka
+sqlalchemy
+asyncpg
+boto3
+pytest
+testcontainers
+httpx
+sendgrid

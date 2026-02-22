@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+aiokafka
+sqlalchemy
+asyncpg
+boto3
+# torch
+# scikit-learn==1.3.2
+numpy
+pytest
+testcontainers
+httpx
