@@ -1,0 +1,119 @@
+version: "3.8"
+
+services:
+  # Base Infrastructure
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: origin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: origin_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # API Gateway
+  api-gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - shipment-service
+      - iot-ingestion-service
+
+  # Origin Services
+  auth-service:
+    build:
+      context: ./services/auth-service
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - REDIS_URL=redis://redis:6379
+
+  user-service:
+    build:
+      context: ./services/user-service
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+
+  shipment-service:
+    build:
+      context: ./services/shipment-service
+    ports:
+      - "8003:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  iot-ingestion-service:
+    build:
+      context: ./services/iot-ingestion-service
+    ports:
+      - "8004:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  ml-service:
+    build:
+      context: ./services/ml_service
+    ports:
+      - "8005:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  alert-service:
+    build:
+      context: ./services/alert_service
+    ports:
+      - "8006:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  escrow-service:
+    build:
+      context: ./services/escrow-service
+    ports:
+      - "8007:8000"
+    environment:
+      - DATABASE_URL=postgresql://origin:password@postgres:5432/origin_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+volumes:
+  pgdata:
