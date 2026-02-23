@@ -1,1 +1,36 @@
+# Common
+.DS_Store
+.env
+.venv
+venv/
+env/
+node_modules/
+dist/
+build/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Node.js
+apps/web-app/.next/
+apps/web-app/out/
+.npm
+.eslintcache
+
+# Docker
+.dockerignore
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Java/Maven (if any)
 target/
