@@ -1,17 +1,30 @@
+"use client";
+
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { fetchShipments } from '@/lib/api';
 
 export default function ShipmentsPage() {
-    const filters = ['All Shipments', 'In Transit', 'Delivered', 'On Hold', 'Flagged'];
-    const activeFilter = 'All Shipments';
+    const [shipments, setShipments] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [activeFilter, setActiveFilter] = useState('All Shipments');
 
-    const shipments = [
-        { id: 'SHP-99128', origin: 'Marseille, FR', dest: 'Port Said, EG', client: 'AgriCorp Global', status: 'In Transit', risk: 12, date: 'Oct 24, 2024' },
-        { id: 'SHP-99127', origin: 'Santos, BR', dest: 'Rotterdam, NL', client: 'TerraLogistics', status: 'Delivered', risk: 5, date: 'Oct 23, 2024' },
-        { id: 'SHP-99126', origin: 'Vancouver, CA', dest: 'Yokohama, JP', client: 'PacOcean', status: 'On Hold', risk: 65, date: 'Oct 22, 2024' },
-        { id: 'SHP-99125', origin: 'Genoa, IT', dest: 'Dubai, AE', client: 'EuroProduce', status: 'In Transit', risk: 18, date: 'Oct 22, 2024' },
-        { id: 'SHP-99124', origin: 'Qingdao, CN', dest: 'Los Angeles, US', client: 'SinoTrans', status: 'In Transit', risk: 24, date: 'Oct 21, 2024' },
-        { id: 'SHP-99123', origin: 'Bergen, NO', dest: 'London, UK', client: 'NordicTrade', status: 'Delivered', risk: 2, date: 'Oct 20, 2024' },
-    ];
+    const filters = ['All Shipments', 'In Transit', 'Delivered', 'On Hold', 'Flagged'];
+
+    useEffect(() => {
+        const loadShipments = async () => {
+            setLoading(true);
+            const data = await fetchShipments();
+            setShipments(data);
+            setLoading(false);
+        };
+        loadShipments();
+    }, []);
+
+    const filteredShipments = shipments.filter(shp => {
+        if (activeFilter === 'All Shipments') return true;
+        return shp.status === activeFilter.toUpperCase().replace(' ', '_');
+    });
 
     return (
         <DashboardLayout
@@ -22,17 +35,21 @@ export default function ShipmentsPage() {
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '1.5rem' }}>
                         {filters.map(filter => (
-                            <button key={filter} style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: '0.5rem 0',
-                                fontSize: '0.875rem',
-                                fontWeight: activeFilter === filter ? 700 : 500,
-                                color: activeFilter === filter ? 'var(--primary)' : 'var(--text-muted)',
-                                borderBottom: activeFilter === filter ? '2px solid var(--primary)' : '2px solid transparent',
-                                cursor: 'pointer',
-                                transition: 'all var(--transition-fast)'
-                            }}>
+                            <button
+                                key={filter}
+                                onClick={() => setActiveFilter(filter)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0.5rem 0',
+                                    fontSize: '0.875rem',
+                                    fontWeight: activeFilter === filter ? 700 : 500,
+                                    color: activeFilter === filter ? 'var(--primary)' : 'var(--text-muted)',
+                                    borderBottom: activeFilter === filter ? '2px solid var(--primary)' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    transition: 'all var(--transition-fast)'
+                                }}
+                            >
                                 {filter}
                             </button>
                         ))}
@@ -59,31 +76,31 @@ export default function ShipmentsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {shipments.map((shp, i) => (
+                            {filteredShipments.map((shp, i) => (
                                 <tr key={i}>
-                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{shp.id}</td>
+                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{shp.id.substring(0, 8)}</td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <span style={{ fontWeight: 600 }}>{shp.origin}</span>
+                                            <span style={{ fontWeight: 600 }}>{shp.origin || 'Unknown'}</span>
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                            <span style={{ color: 'var(--text-muted)' }}>{shp.dest}</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>{shp.destination}</span>
                                         </div>
                                     </td>
-                                    <td style={{ fontWeight: 500 }}>{shp.client}</td>
+                                    <td style={{ fontWeight: 500 }}>{shp.farmer_id.substring(0, 8)}</td>
                                     <td>
-                                        <span className={`badge ${shp.status === 'Delivered' ? 'badge-success' : shp.status === 'On Hold' ? 'badge-danger' : 'badge-primary'}`}>
+                                        <span className={`badge ${shp.status === 'DELIVERED' ? 'badge-success' : shp.status === 'ON_HOLD' ? 'badge-danger' : 'badge-primary'}`}>
                                             {shp.status}
                                         </span>
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                             <div style={{ flex: 1, height: '6px', background: '#f1f5f9', borderRadius: '3px', width: '80px' }}>
-                                                <div style={{ height: '100%', width: `${shp.risk}%`, background: shp.risk > 50 ? 'var(--danger)' : shp.risk > 20 ? 'var(--warning)' : 'var(--secondary)', borderRadius: '3px' }}></div>
+                                                <div style={{ height: '100%', width: `10%`, background: 'var(--secondary)', borderRadius: '3px' }}></div>
                                             </div>
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{shp.risk}%</span>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>10%</span>
                                         </div>
                                     </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{shp.date}</td>
+                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{new Date().toLocaleDateString()}</td>
                                     <td>
                                         <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
@@ -91,12 +108,19 @@ export default function ShipmentsPage() {
                                     </td>
                                 </tr>
                             ))}
+                            {filteredShipments.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                        {loading ? 'Loading shipments...' : 'No shipments found matching the criteria.'}
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
 
                 <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>Showing 6 of 1,284 shipments</p>
+                    <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>Showing {filteredShipments.length} of {shipments.length} shipments</p>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>Previous</button>
                         <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>Next</button>

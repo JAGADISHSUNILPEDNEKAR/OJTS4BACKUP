@@ -1,4 +1,9 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
+import { isAuthenticated } from '@/lib/api';
 
 export default function DashboardLayout({
     children,
@@ -9,6 +14,41 @@ export default function DashboardLayout({
     title?: string;
     description?: string;
 }) {
+    const router = useRouter();
+    const [timeRange, setTimeRange] = useState('Past 24 Hours');
+    const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+    const [showFilterPanel, setShowFilterPanel] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false);
+
+    useEffect(() => {
+        if (!isAuthenticated()) {
+            router.replace('/login');
+        } else {
+            setAuthChecked(true);
+        }
+    }, [router]);
+
+    if (!authChecked) {
+        return (
+            <div style={{
+                height: '100vh', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: 'var(--bg-primary)',
+            }}>
+                <div style={{
+                    width: '32px', height: '32px',
+                    border: '3px solid var(--border-light)',
+                    borderTopColor: 'var(--primary)',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                }} />
+                <style jsx>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
+
+    const timeRangeOptions = ['Past 1 Hour', 'Past 6 Hours', 'Past 24 Hours', 'Past 7 Days', 'Past 30 Days'];
+
     return (
         <div className="dashboard-layout">
             <Sidebar />
@@ -31,11 +71,11 @@ export default function DashboardLayout({
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                         <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)' }}>
-                            <div style={{ position: 'relative', cursor: 'pointer' }}>
+                            <div onClick={() => router.push('/alerts')} style={{ position: 'relative', cursor: 'pointer' }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                                 <div style={{ position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', background: 'var(--danger)', borderRadius: '50%', border: '2px solid white' }}></div>
                             </div>
-                            <div style={{ cursor: 'pointer' }}>
+                            <div style={{ cursor: 'pointer' }} onClick={() => alert('Help center coming soon!')}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             </div>
                         </div>
@@ -47,7 +87,7 @@ export default function DashboardLayout({
                                 <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-main)' }}>Alex Rivera</p>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Enterprise Admin</p>
                             </div>
-                            <div style={{ position: 'relative' }}>
+                            <div onClick={() => router.push('/profile')} style={{ position: 'relative', cursor: 'pointer' }}>
                                 <div style={{
                                     width: '40px',
                                     height: '40px',
@@ -71,20 +111,85 @@ export default function DashboardLayout({
                                     {description && <p style={{ color: 'var(--text-muted)' }}>{description}</p>}
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <button className="btn btn-outline">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                        Past 24 Hours
-                                    </button>
-                                    <button className="btn btn-outline">
+                                    {/* Time Range Dropdown */}
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            className="btn btn-outline"
+                                            onClick={() => { setShowTimeDropdown(!showTimeDropdown); setShowFilterPanel(false); }}
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                            {timeRange}
+                                        </button>
+                                        {showTimeDropdown && (
+                                            <div style={{
+                                                position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem',
+                                                background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+                                                borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 50,
+                                                minWidth: '180px', overflow: 'hidden'
+                                            }}>
+                                                {timeRangeOptions.map((option) => (
+                                                    <div
+                                                        key={option}
+                                                        onClick={() => { setTimeRange(option); setShowTimeDropdown(false); }}
+                                                        style={{
+                                                            padding: '0.625rem 1rem', fontSize: '0.8125rem', cursor: 'pointer',
+                                                            fontWeight: timeRange === option ? 700 : 500,
+                                                            color: timeRange === option ? 'var(--primary)' : 'var(--text-main)',
+                                                            background: timeRange === option ? 'var(--primary-light)' : 'transparent',
+                                                            transition: 'background var(--transition-fast)'
+                                                        }}
+                                                        onMouseEnter={(e) => { if (timeRange !== option) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                                                        onMouseLeave={(e) => { if (timeRange !== option) e.currentTarget.style.background = 'transparent'; }}
+                                                    >
+                                                        {option}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Filters Button */}
+                                    <button
+                                        className="btn btn-outline"
+                                        onClick={() => { setShowFilterPanel(!showFilterPanel); setShowTimeDropdown(false); }}
+                                        style={{ background: showFilterPanel ? 'var(--bg-hover)' : undefined }}
+                                    >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                                         Filters
                                     </button>
-                                    <button className="btn btn-primary">
+
+                                    {/* New Shipment Button */}
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => router.push('/shipments')}
+                                    >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                         New Shipment
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Filter Panel */}
+                            {showFilterPanel && (
+                                <div style={{
+                                    marginTop: '1rem', padding: '1.25rem', background: 'var(--bg-surface)',
+                                    border: '1px solid var(--border-light)', borderRadius: '10px',
+                                    boxShadow: 'var(--shadow-sm)',
+                                    display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap'
+                                }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>FILTER BY:</span>
+                                    {['All', 'Critical Risk', 'Active Only', 'Pending Audit', 'Disputed'].map((filter) => (
+                                        <button
+                                            key={filter}
+                                            className="btn btn-outline"
+                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                                            onClick={() => { alert(`Filter applied: ${filter}`); setShowFilterPanel(false); }}
+                                        >
+                                            {filter}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                     {children}
