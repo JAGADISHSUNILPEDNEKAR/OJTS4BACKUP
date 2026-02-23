@@ -1,8 +1,9 @@
 import json
 import asyncio
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from aiokafka import AIOKafkaProducer
 
 from database import engine, get_db, Base
@@ -42,6 +43,53 @@ async def get_my_profile(
     current_user: User = Depends(get_current_user_from_token)
 ):
     return current_user
+
+@app.put("/api/v1/users/me", response_model=UserResponse)
+async def update_my_profile(
+    updates: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_token),
+):
+    """Update the current user's profile. Only email and is_active can be self-updated."""
+    if updates.email is not None:
+        # Check for duplicate email
+        existing = await db.execute(
+            select(User).where(User.email == updates.email, User.id != current_user.id)
+        )
+        if existing.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already in use by another account",
+            )
+        current_user.email = updates.email
+
+    # Role changes are only allowed for ADMINs (self-role-change is blocked)
+    if updates.role is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Role changes require admin privileges. Contact an administrator.",
+        )
+
+    if updates.is_active is not None:
+        current_user.is_active = updates.is_active
+
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+@app.get("/api/v1/users", response_model=list[UserResponse])
+async def list_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["ADMIN", "SUPERADMIN"])),
+):
+    """List all users (admin only, paginated)."""
+    result = await db.execute(
+        select(User).offset(skip).limit(limit)
+    )
+    return result.scalars().all()
 
 @app.get("/api/v1/users/{id}", response_model=UserResponse)
 async def get_user_by_id(

@@ -1,11 +1,19 @@
 import asyncio
 import logging
+from typing import List
 from fastapi import FastAPI
-from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results
+from pydantic import BaseModel
+from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results, get_recent_alerts
 
 logger = logging.getLogger("alert-service")
 
 app = FastAPI(title="Origin Alert Service")
+
+class Alert(BaseModel):
+    shipment_id: str
+    score: float
+    severity: str
+    timestamp: str
 
 consumer_task = None
 
@@ -27,6 +35,10 @@ async def shutdown_event():
         except asyncio.CancelledError:
             pass
     await stop_kafka_producer()
+
+@app.get("/api/v1/alerts", response_model=List[Alert])
+async def get_alerts_api():
+    return get_recent_alerts()
 
 @app.get("/health")
 async def health_check():

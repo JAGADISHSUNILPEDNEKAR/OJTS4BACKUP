@@ -8,6 +8,7 @@ from notifications.dispatcher import dispatch_alert
 logger = logging.getLogger(__name__)
 
 producer: AIOKafkaProducer = None
+recent_alerts = []
 
 async def start_kafka_producer():
     global producer
@@ -24,7 +25,11 @@ async def stop_kafka_producer():
         await producer.stop()
         logger.info("Kafka Producer stopped")
 
+def get_recent_alerts():
+    return recent_alerts
+
 async def consume_ml_results():
+    import datetime
     consumer = AIOKafkaConsumer(
         'ml.events',
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
@@ -52,8 +57,14 @@ async def consume_ml_results():
                         "event": "alert.created",
                         "shipment_id": shipment_id,
                         "severity": severity,
-                        "score": score
+                        "score": score,
+                        "timestamp": datetime.datetime.now().isoformat()
                     }
+                    
+                    recent_alerts.insert(0, alert_event)
+                    if len(recent_alerts) > 50:
+                        recent_alerts.pop()
+                        
                     if producer:
                         await producer.send_and_wait('alert.events', alert_event)
                         logger.info(f"Published alert.created for shipment {shipment_id}")
