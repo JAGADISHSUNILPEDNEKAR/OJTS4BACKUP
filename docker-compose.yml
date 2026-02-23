@@ -51,6 +51,11 @@ services:
       - auth-service
       - shipment-service
       - iot-ingestion-service
+      - ml-service
+      - alert-service
+      - escrow-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # Origin Services
   auth-service:
