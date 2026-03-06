@@ -51,3 +51,7 @@ Our documentation is organized categorically to simplify discovery and maintenan
 
 <img width="2076" height="1721" alt="diagram-export-20-02-2026-15_08_30" src="https://github.com/user-attachments/assets/00100229-752a-426a-9999-c83122371274" />
 
+---
+
+Colab link:https://colab.research.google.com/drive/1RXsH5Mvqx2AdQCqbFLoR6HWzRWaD0oC2#scrollTo=rJH6HK4z0Z6G 
+
