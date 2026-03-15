@@ -2,15 +2,19 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { logout } from '@/lib/api';
 
 export default function LogoutPage() {
     const router = useRouter();
 
     useEffect(() => {
-        // Simple logout simulation
-        setTimeout(() => {
-            router.push('/');
-        }, 1500);
+        const doLogout = async () => {
+            await logout();
+            setTimeout(() => {
+                router.push('/login');
+            }, 1500);
+        };
+        doLogout();
     }, [router]);
 
     return (
@@ -20,20 +24,20 @@ export default function LogoutPage() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#f8fafc',
-            fontFamily: 'system-ui, -apple-system, sans-serif'
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+            fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
         }}>
             <div style={{ textAlign: 'center' }}>
-                <div className="spinner" style={{
+                <div style={{
                     width: '40px',
                     height: '40px',
-                    border: '4px solid #e2e8f0',
+                    border: '4px solid rgba(255,255,255,0.1)',
                     borderTopColor: '#3b82f6',
                     borderRadius: '50%',
                     margin: '0 auto 1.5rem',
                     animation: 'spin 1s linear infinite'
                 }}></div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem' }}>Signing you out...</h2>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', margin: '0 0 0.5rem' }}>Signing you out...</h2>
                 <p style={{ color: '#64748b', margin: 0 }}>Securely ending your session.</p>
             </div>
             <style jsx global>{`

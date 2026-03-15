@@ -1,13 +1,198 @@
+"use client";
+
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { fetchAudits, requestAudit } from '@/lib/api';
 
 export default function AuditsPage() {
+    const [audits, setAudits] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [requesting, setRequesting] = useState(false);
+    const [typeFilter, setTypeFilter] = useState('All');
+
+    useEffect(() => {
+        const loadAudits = async () => {
+            setLoading(true);
+            const data = await fetchAudits();
+            setAudits(data);
+            setLoading(false);
+        };
+        loadAudits();
+    }, []);
+
+    const auditTypes = ['All', 'Route Compliance', 'Financial Reconciliation', 'Sensor Calibration', 'Cold Chain Integrity', 'Settlement Verification', 'Geofence Compliance'];
+
+    const filteredAudits = audits.filter(a => {
+        if (typeFilter === 'All') return true;
+        return a.type === typeFilter;
+    });
+
+    const handleRequestAudit = async () => {
+        setRequesting(true);
+        const result = await requestAudit('manual-request');
+        setAudits(prev => [{
+            id: `AUD-${1022 + prev.length}`,
+            entity: 'MANUAL',
+            type: 'Manual Audit',
+            auditor: 'Alex Rivera',
+            status: 'Pending',
+            timestamp: new Date().toISOString(),
+            findings: 0,
+        }, ...prev]);
+        setRequesting(false);
+        alert('Audit request submitted successfully');
+    };
+
+    const handleViewDetails = (audit: any) => {
+        alert(
+            `Audit Details\n\n` +
+            `ID: ${audit.id}\n` +
+            `Entity: ${audit.entity}\n` +
+            `Type: ${audit.type}\n` +
+            `Auditor: ${audit.auditor}\n` +
+            `Status: ${audit.status}\n` +
+            `Findings: ${audit.findings}\n` +
+            `Timestamp: ${new Date(audit.timestamp).toLocaleString()}`
+        );
+    };
+
+    const handleExportLog = () => {
+        const csvContent = [
+            'ID,Entity,Type,Auditor,Status,Findings,Timestamp',
+            ...audits.map(a => `${a.id},${a.entity},${a.type},${a.auditor},${a.status},${a.findings},${a.timestamp}`)
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'audit_log.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const passedCount = audits.filter(a => a.status === 'Passed').length;
+    const failedCount = audits.filter(a => a.status === 'Failed').length;
+
     return (
         <DashboardLayout
             title="System Audits & Compliance"
             description="Immutable audit logs and compliance reporting for regulatory oversight."
         >
-            <div className="card">
-                <p className="text-muted">Audit trail and compliance engine reports will be displayed here.</p>
+            {/* Stats Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
+                {[
+                    { label: 'Total Audits', value: audits.length.toString(), color: 'var(--primary)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> },
+                    { label: 'Passed', value: passedCount.toString(), color: 'var(--secondary)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
+                    { label: 'Failed', value: failedCount.toString(), color: 'var(--danger)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> },
+                    { label: 'Compliance Rate', value: audits.length > 0 ? `${Math.round((passedCount / audits.length) * 100)}%` : '—', color: 'var(--info)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
+                ].map((stat, i) => (
+                    <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ padding: '0.625rem', borderRadius: '10px', background: 'var(--bg-primary)', color: stat.color }}>
+                            {stat.icon}
+                        </div>
+                        <div>
+                            <p className="text-muted" style={{ fontWeight: 600, margin: 0 }}>{stat.label}</p>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>{stat.value}</h3>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Action Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {auditTypes.map(type => (
+                        <button
+                            key={type}
+                            className={`btn ${typeFilter === type ? 'btn-primary' : 'btn-outline'}`}
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                            onClick={() => setTypeFilter(type)}
+                        >
+                            {type}
+                        </button>
+                    ))}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                        className="btn btn-outline"
+                        style={{ fontSize: '0.75rem' }}
+                        onClick={handleExportLog}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Export CSV
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleRequestAudit}
+                        disabled={requesting}
+                        style={{ opacity: requesting ? 0.6 : 1 }}
+                    >
+                        {requesting ? 'Requesting...' : 'Request Audit'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Audit Table */}
+            <div className="card" style={{ padding: 0 }}>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Audit ID</th>
+                                <th>Entity</th>
+                                <th>Type</th>
+                                <th>Auditor</th>
+                                <th>Status</th>
+                                <th>Findings</th>
+                                <th>Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredAudits.map((audit, i) => (
+                                <tr key={i}>
+                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{audit.id}</td>
+                                    <td style={{ fontWeight: 600 }}>{audit.entity}</td>
+                                    <td>{audit.type}</td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#e2e8f0' }}></div>
+                                            <span style={{ fontSize: '0.8125rem' }}>{audit.auditor}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className={`badge ${audit.status === 'Passed' ? 'badge-success' : audit.status === 'Failed' ? 'badge-danger' : audit.status === 'Warning' ? 'badge-warning' : 'badge-info'}`}>
+                                            {audit.status}
+                                        </span>
+                                    </td>
+                                    <td style={{ fontWeight: 700, color: audit.findings > 0 ? 'var(--danger)' : 'var(--secondary)' }}>
+                                        {audit.findings}
+                                    </td>
+                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                        {new Date(audit.timestamp).toLocaleString()}
+                                    </td>
+                                    <td>
+                                        <button
+                                            className="btn btn-outline"
+                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                                            onClick={() => handleViewDetails(audit)}
+                                        >
+                                            View Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filteredAudits.length === 0 && (
+                                <tr>
+                                    <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                        {loading ? 'Loading audits...' : 'No audits matching the current filter.'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </DashboardLayout>
     );
