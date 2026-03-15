@@ -38,6 +38,12 @@ import '../screens/certificates/certificate_upload_screen.dart';
 import '../screens/certificates/certificate_verification_screen.dart';
 import '../screens/certificates/certificate_authenticity_proof.dart';
 
+// Phase 8
+import '../screens/audits/fraud_review_screen.dart';
+import '../screens/shipments/submit_shipment_form.dart';
+import '../screens/wallet/backup_recovery_screen.dart';
+import '../screens/profile/notification_preferences_screen.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final GoRouter appRouter = GoRouter(
@@ -196,6 +202,24 @@ final GoRouter appRouter = GoRouter(
         final id = state.pathParameters['id'] ?? 'UNKNOWN';
         return CertificateAuthenticityProofScreen(certificateId: id);
       },
+    ),
+    
+    // Phase 8 - Operations & Security
+    GoRoute(
+      path: '/fraud-review',
+      builder: (context, state) => const FraudReviewScreen(),
+    ),
+    GoRoute(
+      path: '/submit-shipment',
+      builder: (context, state) => const SubmitShipmentForm(),
+    ),
+    GoRoute(
+      path: '/backup-recovery',
+      builder: (context, state) => const BackupRecoveryScreen(),
+    ),
+    GoRoute(
+      path: '/notification-preferences',
+      builder: (context, state) => const NotificationPreferencesScreen(),
     ),
   ],
 );
