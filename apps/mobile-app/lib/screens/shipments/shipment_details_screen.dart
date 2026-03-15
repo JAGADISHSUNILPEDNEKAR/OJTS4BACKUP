@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class ShipmentDetailsScreen extends StatelessWidget {
   final String shipmentId;
 
-  const ShipmentDetailsScreen({Key? key, required this shipmentId}) : super(key: key);
+  const ShipmentDetailsScreen({super.key, required this.shipmentId});
 
   @override
   Widget build(BuildContext context) {

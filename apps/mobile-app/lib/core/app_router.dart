@@ -24,6 +24,10 @@ import '../screens/shipments/shipment_details_screen.dart';
 import '../screens/alerts/alerts_screen.dart';
 import '../screens/profile/profile_settings_screen.dart';
 
+// Phase 4
+import '../screens/escrow/escrow_management_screen.dart';
+import '../screens/audits/audit_submission_form.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final GoRouter appRouter = GoRouter(
@@ -131,6 +135,18 @@ final GoRouter appRouter = GoRouter(
         final id = state.pathParameters['id'] ?? '';
         return ShipmentDetailsScreen(shipmentId: id);
       },
+    ),
+    
+    // Escrow Management
+    GoRoute(
+      path: '/escrow',
+      builder: (context, state) => const EscrowManagementScreen(),
+    ),
+    
+    // Audit Submission
+    GoRoute(
+      path: '/audit-submission',
+      builder: (context, state) => const AuditSubmissionForm(),
     ),
   ],
 );
