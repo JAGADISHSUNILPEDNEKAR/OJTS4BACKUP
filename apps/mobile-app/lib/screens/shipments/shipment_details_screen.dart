@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class ShipmentDetailsScreen extends StatelessWidget {
   final String shipmentId;
@@ -26,9 +27,21 @@ class ShipmentDetailsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildDetailsCard(),
             const SizedBox(height: 24),
-            Text('Map', style: Theme.of(context).textTheme.titleLarge),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Map', style: Theme.of(context).textTheme.titleLarge),
+                TextButton.icon(
+                  onPressed: () {
+                    context.push('/sensor-details/SNS-${shipmentId.split('-').last}');
+                  },
+                  icon: const Icon(Icons.sensors),
+                  label: const Text('Live Sensors'),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
-            _buildMapPlaceholder(),
+            _buildMapPlaceholder(context),
           ],
         ),
       ),
@@ -154,21 +167,42 @@ class ShipmentDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMapPlaceholder() {
+  Widget _buildMapPlaceholder(BuildContext context) {
     return Container(
-      height: 200,
+      height: 240,
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white12),
+        image: const DecorationImage(
+          image: NetworkImage('https://maps.googleapis.com/maps/api/staticmap?center=Brooklyn+Bridge,New+York,NY&zoom=13&size=600x300&maptype=roadmap&markers=color:blue%7Clabel:S%7C40.702147,-74.015794&markers=color:green%7Clabel:G%7C40.711614,-74.012318&markers=color:red%7Clabel:C%7C40.718217,-73.998284&key=YOUR_API_KEY'), // Mock placeholder URL for aesthetics (will just fail gracefully or show if valid)
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black54, BlendMode.darken),
+        ),
       ),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.map, size: 48, color: Colors.grey),
-            SizedBox(height: 8),
-            Text('Map View (Placeholder)', style: TextStyle(color: Colors.grey)),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_on, size: 32, color: Colors.white),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Live Interactive Map',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  const Shadow(color: Colors.black, blurRadius: 4),
+                ],
+              ),
+            ),
           ],
         ),
       ),

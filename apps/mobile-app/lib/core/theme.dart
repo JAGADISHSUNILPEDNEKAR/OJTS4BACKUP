@@ -55,6 +55,12 @@ class OriginTheme {
         labelStyle: const TextStyle(color: Colors.white54),
         hintStyle: const TextStyle(color: Colors.white38),
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
     );
   }
 }

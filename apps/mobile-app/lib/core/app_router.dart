@@ -24,7 +24,8 @@ import '../screens/shipments/shipment_details_screen.dart';
 import '../screens/alerts/alerts_screen.dart';
 import '../screens/profile/profile_settings_screen.dart';
 
-// Phase 4
+// Phase 5
+import '../screens/iot/sensor_details_screen.dart';
 import '../screens/escrow/escrow_management_screen.dart';
 import '../screens/audits/audit_submission_form.dart';
 
@@ -134,6 +135,15 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return ShipmentDetailsScreen(shipmentId: id);
+      },
+    ),
+    
+    // Sensor Details
+    GoRoute(
+      path: '/sensor-details/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return SensorDetailsScreen(sensorId: id);
       },
     ),
     
