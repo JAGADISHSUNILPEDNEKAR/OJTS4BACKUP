@@ -29,6 +29,10 @@ import '../screens/iot/sensor_details_screen.dart';
 import '../screens/escrow/escrow_management_screen.dart';
 import '../screens/audits/audit_submission_form.dart';
 
+// Phase 6
+import '../screens/consumer/qr_scanner_screen.dart';
+import '../screens/consumer/verification_result_screen.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final GoRouter appRouter = GoRouter(
@@ -157,6 +161,19 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/audit-submission',
       builder: (context, state) => const AuditSubmissionForm(),
+    ),
+    
+    // Phase 6 - Consumer Flow
+    GoRoute(
+      path: '/qr-scanner',
+      builder: (context, state) => const QRScannerScreen(),
+    ),
+    GoRoute(
+      path: '/verification-result',
+      builder: (context, state) {
+        final batchId = state.uri.queryParameters['batchId'] ?? 'UNKNOWN';
+        return VerificationResultScreen(batchId: batchId);
+      },
     ),
   ],
 );
