@@ -18,6 +18,12 @@ import '../screens/dashboard/origin_dashboard_screen.dart';
 import '../screens/dashboard/auditor_dashboard_screen.dart';
 import '../screens/wallet/wallet_key_management_screen.dart';
 
+// Phase 3
+import '../screens/shipments/shipment_list_screen.dart';
+import '../screens/shipments/shipment_details_screen.dart';
+import '../screens/alerts/alerts_screen.dart';
+import '../screens/profile/profile_settings_screen.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final GoRouter appRouter = GoRouter(
@@ -80,8 +86,32 @@ final GoRouter appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
+              path: '/shipments',
+              builder: (context, state) => const ShipmentListScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: '/wallet',
               builder: (context, state) => const WalletKeyManagementScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/alerts',
+              builder: (context, state) => const AlertsScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileSettingsScreen(),
             ),
           ],
         ),
@@ -92,6 +122,15 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/handover',
       builder: (context, state) => const CustodyHandoffScreen(),
+    ),
+    
+    // Shipment Details
+    GoRoute(
+      path: '/shipment-details/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ShipmentDetailsScreen(shipmentId: id);
+      },
     ),
   ],
 );
