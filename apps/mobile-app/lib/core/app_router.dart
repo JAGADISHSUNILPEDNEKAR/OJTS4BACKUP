@@ -33,6 +33,11 @@ import '../screens/audits/audit_submission_form.dart';
 import '../screens/consumer/qr_scanner_screen.dart';
 import '../screens/consumer/verification_result_screen.dart';
 
+// Phase 7
+import '../screens/certificates/certificate_upload_screen.dart';
+import '../screens/certificates/certificate_verification_screen.dart';
+import '../screens/certificates/certificate_authenticity_proof.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final GoRouter appRouter = GoRouter(
@@ -173,6 +178,23 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final batchId = state.uri.queryParameters['batchId'] ?? 'UNKNOWN';
         return VerificationResultScreen(batchId: batchId);
+      },
+    ),
+    
+    // Phase 7 - Certificate Lifecycle
+    GoRoute(
+      path: '/certificate-upload',
+      builder: (context, state) => const CertificateUploadScreen(),
+    ),
+    GoRoute(
+      path: '/certificate-verification',
+      builder: (context, state) => const CertificateVerificationScreen(),
+    ),
+    GoRoute(
+      path: '/certificate-proof/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? 'UNKNOWN';
+        return CertificateAuthenticityProofScreen(certificateId: id);
       },
     ),
   ],
