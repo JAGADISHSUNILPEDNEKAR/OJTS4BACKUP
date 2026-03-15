@@ -38,6 +38,9 @@ dependencies:
   elliptic: ^0.3.12
   hex: ^0.2.0
   http: ^1.6.0
+  go_router: ^17.1.0
+  google_fonts: ^8.0.2
+  flutter_svg: ^2.2.4
 
 dev_dependencies:
   flutter_test:
