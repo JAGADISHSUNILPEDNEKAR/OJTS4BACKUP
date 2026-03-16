@@ -4,6 +4,29 @@ import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { updateProfile } from '@/lib/api';
 
+const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
+    <div
+        onClick={onToggle}
+        style={{
+            width: '36px', height: '20px',
+            background: enabled ? 'var(--primary)' : 'var(--bg-primary)',
+            borderRadius: '10px', position: 'relative', cursor: 'pointer',
+            border: enabled ? 'none' : '1px solid var(--border-light)',
+            transition: 'all var(--transition-fast)'
+        }}
+    >
+        <div style={{
+            position: 'absolute',
+            [enabled ? 'right' : 'left']: '2px',
+            top: '2px', width: '16px', height: '16px',
+            background: 'white', borderRadius: '50%',
+            border: enabled ? 'none' : '1px solid var(--border-light)',
+            transition: 'all var(--transition-fast)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}></div>
+    </div>
+);
+
 export default function SettingsPage() {
     const [displayName, setDisplayName] = useState('Alex Rivera');
     const [email, setEmail] = useState('alex@origin.io');
@@ -23,29 +46,6 @@ export default function SettingsPage() {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
     };
-
-    const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
-        <div
-            onClick={onToggle}
-            style={{
-                width: '36px', height: '20px',
-                background: enabled ? 'var(--primary)' : 'var(--bg-primary)',
-                borderRadius: '10px', position: 'relative', cursor: 'pointer',
-                border: enabled ? 'none' : '1px solid var(--border-light)',
-                transition: 'all var(--transition-fast)'
-            }}
-        >
-            <div style={{
-                position: 'absolute',
-                [enabled ? 'right' : 'left']: '2px',
-                top: '2px', width: '16px', height: '16px',
-                background: 'white', borderRadius: '50%',
-                border: enabled ? 'none' : '1px solid var(--border-light)',
-                transition: 'all var(--transition-fast)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}></div>
-        </div>
-    );
 
     return (
         <DashboardLayout

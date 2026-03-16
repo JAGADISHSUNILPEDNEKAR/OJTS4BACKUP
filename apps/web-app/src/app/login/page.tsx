@@ -26,8 +26,9 @@ export default function LoginPage() {
                 await login(email, password, totpCode || undefined);
             }
             router.push('/');
-        } catch (err: any) {
-            const message = err.message || 'Authentication failed';
+        } catch (err: unknown) {
+            const error = err as Error;
+            const message = error.message || 'Authentication failed';
             if (message === 'TOTP code required') {
                 setShowTotp(true);
                 setError('Enter your 2FA code to continue.');

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments } from '@/lib/api';
+import { fetchShipments, Shipment } from '@/lib/api';
 
 export default function ShipmentsPage() {
-    const [shipments, setShipments] = useState<any[]>([]);
+    const [shipments, setShipments] = useState<Shipment[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('All Shipments');
 

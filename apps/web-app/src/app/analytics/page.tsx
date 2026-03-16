@@ -90,9 +90,13 @@ export default function AnalyticsPage() {
                         </div>
                     </div>
                     <div style={{ height: '300px', display: 'flex', alignItems: 'flex-end', gap: '2px', paddingBottom: '2rem' }}>
-                        {Array.from({ length: 40 }).map((_, i) => (
-                            <div key={i} style={{ flex: 1, height: `${20 + Math.random() * 60}%`, background: 'var(--primary)', opacity: 0.1 + (i / 40), borderRadius: '2px 2px 0 0' }}></div>
-                        ))}
+                        {Array.from({ length: 40 }).map((_, i) => {
+                            // Deterministic "random" height for purity
+                            const height = 20 + ((i * 13) % 60);
+                            return (
+                                <div key={i} style={{ flex: 1, height: `${height}%`, background: 'var(--primary)', opacity: 0.1 + (i / 40), borderRadius: '2px 2px 0 0' }}></div>
+                            );
+                        })}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         <span>Oct 01</span><span>Oct 08</span><span>Oct 15</span><span>Oct 22</span><span>Oct 31</span>

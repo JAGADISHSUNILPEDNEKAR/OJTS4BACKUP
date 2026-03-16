@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, fetchAlerts, createShipment, requestAudit } from '@/lib/api';
+import { fetchShipments, fetchAlerts, createShipment, requestAudit, Shipment, Alert } from '@/lib/api';
 
 export default function Home() {
   const router = useRouter();
-  const [shipments, setShipments] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
+  void loading;
 
   useEffect(() => {
     const loadData = async () => {

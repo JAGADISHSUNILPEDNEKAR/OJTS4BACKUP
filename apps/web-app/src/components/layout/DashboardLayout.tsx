@@ -24,7 +24,10 @@ export default function DashboardLayout({
         if (!isAuthenticated()) {
             router.replace('/login');
         } else {
-            setAuthChecked(true);
+            const timer = setTimeout(() => {
+                setAuthChecked(true);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [router]);
 

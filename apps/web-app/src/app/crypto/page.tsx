@@ -5,9 +5,17 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fetchEscrows, settleEscrow, disputeEscrow, releaseEscrow } from '@/lib/api';
 
+export interface Escrow {
+    id: string;
+    counterparty: string;
+    value: string;
+    status: string;
+    risk: number;
+}
+
 export default function CryptoPage() {
     const router = useRouter();
-    const [escrows, setEscrows] = useState<any[]>([]);
+    const [escrows, setEscrows] = useState<Escrow[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('All');

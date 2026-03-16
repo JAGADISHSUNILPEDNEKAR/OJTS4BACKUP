@@ -4,8 +4,18 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fetchAudits, requestAudit } from '@/lib/api';
 
+export interface Audit {
+    id: string;
+    entity: string;
+    type: string;
+    auditor: string;
+    status: string;
+    timestamp: string;
+    findings: number;
+}
+
 export default function AuditsPage() {
-    const [audits, setAudits] = useState<any[]>([]);
+    const [audits, setAudits] = useState<Audit[]>([]);
     const [loading, setLoading] = useState(true);
     const [requesting, setRequesting] = useState(false);
     const [typeFilter, setTypeFilter] = useState('All');
@@ -43,7 +53,7 @@ export default function AuditsPage() {
         alert('Audit request submitted successfully');
     };
 
-    const handleViewDetails = (audit: any) => {
+    const handleViewDetails = (audit: Audit) => {
         alert(
             `Audit Details\n\n` +
             `ID: ${audit.id}\n` +

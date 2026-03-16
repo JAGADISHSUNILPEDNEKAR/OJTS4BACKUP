@@ -121,7 +121,16 @@ export async function logout() {
 }
 
 // ─── Shipments ───────────────────────────────────────────────────
-export async function fetchShipments() {
+export interface Shipment {
+    id: string;
+    origin: string;
+    destination: string;
+    farmer_id: string;
+    status: string;
+    [key: string]: unknown;
+}
+
+export async function fetchShipments(): Promise<Shipment[]> {
     try {
         const res = await authFetch(`${API_BASE_URL}/shipments`);
         if (!res.ok) throw new Error('Failed to fetch shipments');
@@ -132,10 +141,17 @@ export async function fetchShipments() {
     }
 }
 
-export async function createShipment(data: any) {
+export async function createShipment(data: Record<string, unknown>) {
     try {
         const formData = new FormData();
-        Object.keys(data).forEach(key => formData.append(key, data[key]));
+        Object.keys(data).forEach(key => {
+            const val = data[key];
+            if (typeof val === 'string' || val instanceof Blob) {
+                formData.append(key, val);
+            } else {
+                formData.append(key, String(val));
+            }
+        });
 
         const res = await authFetch(`${API_BASE_URL}/shipments`, {
             method: 'POST',
@@ -149,8 +165,17 @@ export async function createShipment(data: any) {
     }
 }
 
-// ─── Alerts ──────────────────────────────────────────────────────
-export async function fetchAlerts() {
+export interface Alert {
+    id: string;
+    shipment_id: string;
+    severity: string;
+    type: string;
+    timestamp: string;
+    status: string;
+    message?: string;
+}
+
+export async function fetchAlerts(): Promise<Alert[]> {
     try {
         const res = await authFetch(`${API_BASE_URL}/alerts`);
         if (!res.ok) throw new Error('Failed to fetch alerts');
@@ -167,6 +192,7 @@ export async function acknowledgeAlert(alertId: string) {
         if (!res.ok) throw new Error('Failed to acknowledge alert');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating acknowledge for:', alertId);
         return { id: alertId, status: 'Acknowledged' };
     }
@@ -178,6 +204,7 @@ export async function ignoreAlert(alertId: string) {
         if (!res.ok) throw new Error('Failed to ignore alert');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating ignore for:', alertId);
         return { id: alertId, status: 'Ignored' };
     }
@@ -193,6 +220,7 @@ export async function bulkAcknowledgeAlerts(alertIds: string[]) {
         if (!res.ok) throw new Error('Failed to bulk acknowledge');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating bulk acknowledge');
         return { acknowledged: alertIds.length };
     }
@@ -205,6 +233,7 @@ export async function fetchEscrows() {
         if (!res.ok) throw new Error('Failed to fetch escrows');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, returning mock escrow data');
         return [
             { id: 'ESC-8842', counterparty: 'GlobalAgri Ltd.', value: '1.2 BTC', status: 'Locked', date: 'Oct 24, 2024', risk: 8 },
@@ -223,6 +252,7 @@ export async function settleEscrow(escrowId: string) {
         if (!res.ok) throw new Error('Failed to settle escrow');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating settle for:', escrowId);
         return { id: escrowId, status: 'Settled' };
     }
@@ -234,6 +264,7 @@ export async function disputeEscrow(escrowId: string) {
         if (!res.ok) throw new Error('Failed to dispute escrow');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating dispute for:', escrowId);
         return { id: escrowId, status: 'Disputed' };
     }
@@ -245,6 +276,7 @@ export async function releaseEscrow(escrowId: string) {
         if (!res.ok) throw new Error('Failed to release escrow');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating release for:', escrowId);
         return { id: escrowId, status: 'Released' };
     }
@@ -257,6 +289,7 @@ export async function fetchAudits() {
         if (!res.ok) throw new Error('Failed to fetch audits');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, returning mock audit data');
         return [
             { id: 'AUD-1021', entity: 'STR-8812', type: 'Route Compliance', auditor: 'ComplianceBot v2', status: 'Passed', timestamp: '2024-10-24T14:30:00Z', findings: 0 },
@@ -279,6 +312,7 @@ export async function requestAudit(shipmentId: string) {
         if (!res.ok) throw new Error('Failed to request audit');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating audit request for:', shipmentId);
         return { status: 'AUDIT_REQUESTED', shipmentId };
     }
@@ -295,6 +329,7 @@ export async function generateReport(reportType: string) {
         if (!res.ok) throw new Error('Failed to generate report');
         return res.json();
     } catch (err) {
+        void err;
         console.warn('API unavailable, simulating report generation');
         return { id: `RPT-${Date.now()}`, type: reportType, status: 'Generated', url: '#' };
     }
