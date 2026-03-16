@@ -1,6 +1,6 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
-from services.ml_service.main import app
+from main import app
 
 @pytest.mark.asyncio
 async def test_health_check():
@@ -10,7 +10,7 @@ async def test_health_check():
     assert response.json() == {"status": "ok", "service": "ml-service"}
 
 def test_inference_engine():
-    from services.ml_service.models.inference import inference_engine
+    from models.inference import inference_engine
     inference_engine.load()
     assert inference_engine.ready
     score = inference_engine.predict({"mean_temp": 10.0})

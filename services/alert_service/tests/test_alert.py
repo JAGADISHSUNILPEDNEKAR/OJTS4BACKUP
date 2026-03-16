@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
-from services.alert_service.main import app
-from services.alert_service.evaluator.threshold import evaluate
+from main import app
+from evaluator.threshold import evaluate
 
 @pytest.mark.asyncio
 async def test_health_check():
