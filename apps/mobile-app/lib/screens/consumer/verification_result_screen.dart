@@ -56,21 +56,28 @@ class VerificationResultScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.blue.shade200),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.link, color: Colors.blue.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Anchored on Bitcoin',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade900),
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.link, color: Colors.blue.shade700),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Anchored on Mock Bitcoin Network',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade900),
+                        ),
+                      ],
                     ),
-                    Icon(Icons.arrow_forward_ios,
-                        size: 16, color: Colors.blue.shade700),
-                  ],
+                    const SizedBox(height: 12),
+                    const Text('TXID:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text('5e3d9a1b7f2c4e6a8b0d2f4e6a8b0d2f5e3d...a8b0de', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
+                    const SizedBox(height: 8),
+                    const Text('Merkle Root:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text('aabbcc1122334455667788990011aab...bbccdd', style: TextStyle(fontSize: 12, fontFamily: 'monospace')),
+                  ]
                 ),
               ),
               const SizedBox(height: 30),

@@ -109,12 +109,23 @@ class _SubmitShipmentFormState extends State<SubmitShipmentForm> {
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Review shipment details before submitting to the blockchain.'),
+                const Text('Review shipment details before generating MOCK-PSBT.'),
                 const SizedBox(height: 16),
                 const Text('Items: 1', style: TextStyle(fontWeight: FontWeight.bold)),
                 Text('Barcode: ${_scannedBarcode ?? "None"}'),
                 const SizedBox(height: 16),
-                const Text('Network Fee: ~0.0001 BTC'),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.orange.shade50,
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('System Mode: MOCK BLOCKCHAIN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                      Text('Escrow Amount: 18500.00 USD (0.2073 BTC)'),
+                      Text('Network Fee: Simulated'),
+                    ]
+                  ),
+                ),
               ],
             ),
           ),
