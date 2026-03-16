@@ -19,3 +19,5 @@ async def test_trigger_psbt_flow():
     data = response.json()
     assert data["status"] == "PSBT_FLOW_INITIATED"
     assert data["shipment_id"] == "ship-456"
+    assert data["escrow"]["escrow_psbt_id"] == "MOCK-PSBT-cHNidP8BAHQCAAAAASaBcTce3/KF6Tet7qSze3gADAAAAAD/////"
+    assert data["escrow"]["escrow_state"] == "pending"
