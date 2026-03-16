@@ -28,7 +28,7 @@ pub struct MockAnchoringService;
 impl AnchoringService for MockAnchoringService {
     fn anchor_root(&self, root: &[u8]) -> Result<String, String> {
         log::info!("[Mock] Anchoring Merkle root: {:?}", root);
-        Ok("mock_txid".to_string())
+        Ok("5e3d9a1b7f2c4e6a8b0d2f4e6a8b0d2f5e3d9a1b7f2c4e6a8b0d2f4e6a8b0de".to_string())
     }
 }
 
@@ -40,6 +40,6 @@ mod tests {
     fn test_mock_anchoring() {
         let service = MockAnchoringService;
         let result = service.anchor_root(b"dummy_root").unwrap();
-        assert_eq!(result, "mock_txid");
+        assert_eq!(result, "5e3d9a1b7f2c4e6a8b0d2f4e6a8b0d2f5e3d9a1b7f2c4e6a8b0d2f4e6a8b0de");
     }
 }
