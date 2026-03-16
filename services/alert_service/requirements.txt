@@ -8,3 +8,5 @@ python-dotenv
 aiokafka
 psycopg2-binary
 sendgrid
+httpx
+pytest-asyncio

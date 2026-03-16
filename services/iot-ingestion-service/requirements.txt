@@ -7,3 +7,5 @@ pydantic-settings
 python-dotenv
 aiokafka
 psycopg2-binary
+httpx
+pytest-asyncio

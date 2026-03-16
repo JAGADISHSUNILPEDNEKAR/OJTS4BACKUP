@@ -9,3 +9,5 @@ aiokafka
 psycopg2-binary
 torch
 numpy
+httpx
+pytest-asyncio
