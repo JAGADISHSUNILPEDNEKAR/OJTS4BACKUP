@@ -1,0 +1,492 @@
+{
+  "shipment_id": "a3f7c291-4e2b-4d1a-8b3e-7c6f2a91d045",
+  "schema_version": "1.0.0",
+
+  "product": {
+    "product_id": "PROD-MANGO-KR-2025-0047",
+    "name": "Alphonso Mango",
+    "category": "produce",
+    "variety": "Alphonso (Hapus)",
+    "quantity_kg": 2400.0,
+    "unit": "kg",
+    "batch_id": "BATCH-KR-20250312-0047",
+    "harvest_date": "2025-03-12",
+    "expected_shelf_life_days": 21
+  },
+
+  "provenance": {
+    "farm_id": "FARM-IN-RJ-0091",
+    "farmer_id": "FRMR-SURESH-0091",
+    "farm_name": "Suresh Agrofoods",
+    "cooperative_id": "COOP-KONKAN-MANGO-003",
+    "location": {
+      "latitude": 16.9925,
+      "longitude": 73.3120,
+      "region": "Konkan",
+      "district": "Ratnagiri",
+      "country": "IN"
+    },
+    "country": "IN",
+    "claimed_origin_label": "Ratnagiri GI Alphonso Mango",
+    "provenance_verified": true
+  },
+
+  "events": [
+    {
+      "event_id": "e1a72b3c-0001-4a1b-9c3e-112233445500",
+      "event_type": "harvest",
+      "sequence_number": 1,
+      "timestamp": "2025-03-12T06:30:00+05:30",
+      "actor": {
+        "actor_id": "FRMR-SURESH-0091",
+        "actor_type": "farmer",
+        "name": "Suresh Patil",
+        "risk_score": 0.04
+      },
+      "location": {
+        "latitude": 16.9925,
+        "longitude": 73.3120,
+        "facility_id": "FARM-IN-RJ-0091",
+        "facility_name": "Suresh Agrofoods Farm",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 28.4,
+        "humidity_percent": 71.2,
+        "gps_accuracy_meters": 4.2,
+        "sensor_id": "SENS-IOT-0291-A",
+        "sensor_verified": true
+      },
+      "notes": "Morning harvest. No mechanical damage observed. Sorted and crated.",
+      "event_hash": "3a7f2c91b4d0e5f8a1234567890abcde3a7f2c91b4d0e5f8a1234567890abcde",
+      "previous_event_hash": null
+    },
+    {
+      "event_id": "e1a72b3c-0002-4a1b-9c3e-112233445501",
+      "event_type": "packaging",
+      "sequence_number": 2,
+      "timestamp": "2025-03-12T09:15:00+05:30",
+      "actor": {
+        "actor_id": "COOP-KONKAN-MANGO-003",
+        "actor_type": "cooperative",
+        "name": "Konkan Mango Cooperative",
+        "risk_score": 0.07
+      },
+      "location": {
+        "latitude": 16.9901,
+        "longitude": 73.3145,
+        "facility_id": "FAC-COOP-KNK-003",
+        "facility_name": "Konkan Cooperative Packing House",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 24.1,
+        "humidity_percent": 68.5,
+        "gps_accuracy_meters": 3.1,
+        "sensor_id": "SENS-IOT-0291-B",
+        "sensor_verified": true
+      },
+      "notes": "Packed into 20kg wooden crates. Lot labels applied. QR codes affixed.",
+      "event_hash": "7b3e9d12c4f0a56789012345678abcde7b3e9d12c4f0a56789012345678abcde",
+      "previous_event_hash": "3a7f2c91b4d0e5f8a1234567890abcde3a7f2c91b4d0e5f8a1234567890abcde"
+    },
+    {
+      "event_id": "e1a72b3c-0003-4a1b-9c3e-112233445502",
+      "event_type": "cold_storage_entry",
+      "sequence_number": 3,
+      "timestamp": "2025-03-12T14:00:00+05:30",
+      "actor": {
+        "actor_id": "LOGCO-COLD-IN-007",
+        "actor_type": "logistics",
+        "name": "CoolChain India Pvt Ltd",
+        "risk_score": 0.11
+      },
+      "location": {
+        "latitude": 16.8524,
+        "longitude": 74.1120,
+        "facility_id": "COLD-KOLHAPUR-07",
+        "facility_name": "Kolhapur ColdChain Hub",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 12.2,
+        "humidity_percent": 85.0,
+        "gps_accuracy_meters": 2.8,
+        "sensor_id": "SENS-COLD-KLP-07",
+        "sensor_verified": true
+      },
+      "notes": "Pre-cooling initiated. Target storage temp: 10–12°C. Humidity set to 85–90%.",
+      "event_hash": "d5c1e8f2a3b7904561234abcde78901fd5c1e8f2a3b7904561234abcde78901f",
+      "previous_event_hash": "7b3e9d12c4f0a56789012345678abcde7b3e9d12c4f0a56789012345678abcde"
+    },
+    {
+      "event_id": "e1a72b3c-0004-4a1b-9c3e-112233445503",
+      "event_type": "cold_storage_exit",
+      "sequence_number": 4,
+      "timestamp": "2025-03-14T05:00:00+05:30",
+      "actor": {
+        "actor_id": "LOGCO-COLD-IN-007",
+        "actor_type": "logistics",
+        "name": "CoolChain India Pvt Ltd",
+        "risk_score": 0.11
+      },
+      "location": {
+        "latitude": 16.8524,
+        "longitude": 74.1120,
+        "facility_id": "COLD-KOLHAPUR-07",
+        "facility_name": "Kolhapur ColdChain Hub",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 11.8,
+        "humidity_percent": 87.3,
+        "gps_accuracy_meters": 2.5,
+        "sensor_id": "SENS-COLD-KLP-07",
+        "sensor_verified": true
+      },
+      "notes": "Released for onward transport to Mumbai port. Cold-chain maintained within spec.",
+      "event_hash": "9e4b7f1d2c5a80234567890efab12349e4b7f1d2c5a80234567890efab123456",
+      "previous_event_hash": "d5c1e8f2a3b7904561234abcde78901fd5c1e8f2a3b7904561234abcde78901f"
+    },
+    {
+      "event_id": "e1a72b3c-0005-4a1b-9c3e-112233445504",
+      "event_type": "transport_departure",
+      "sequence_number": 5,
+      "timestamp": "2025-03-14T07:30:00+05:30",
+      "actor": {
+        "actor_id": "LOGCO-TRUCK-IN-312",
+        "actor_type": "logistics",
+        "name": "FastMove Reefer Logistics",
+        "risk_score": 0.18
+      },
+      "location": {
+        "latitude": 16.8524,
+        "longitude": 74.1120,
+        "facility_id": "COLD-KOLHAPUR-07",
+        "facility_name": "Kolhapur ColdChain Hub",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 13.9,
+        "humidity_percent": 78.0,
+        "gps_accuracy_meters": 6.1,
+        "sensor_id": "SENS-TRUCK-312",
+        "sensor_verified": true
+      },
+      "notes": "Reefer truck MH-12-AB-3421 departed for JNPT Mumbai. Expected arrival 14:00 IST.",
+      "event_hash": "2f8d1a7c9b5e034567890abcde1234562f8d1a7c9b5e034567890abcde123456",
+      "previous_event_hash": "9e4b7f1d2c5a80234567890efab12349e4b7f1d2c5a80234567890efab123456"
+    },
+    {
+      "event_id": "e1a72b3c-0006-4a1b-9c3e-112233445505",
+      "event_type": "custodial_handoff",
+      "sequence_number": 6,
+      "timestamp": "2025-03-14T15:45:00+05:30",
+      "actor": {
+        "actor_id": "EXPO-JNPT-IN-044",
+        "actor_type": "logistics",
+        "name": "JNPT Export Handling Co.",
+        "risk_score": 0.09
+      },
+      "location": {
+        "latitude": 18.9500,
+        "longitude": 72.9333,
+        "facility_id": "PORT-JNPT-MUMBAI",
+        "facility_name": "Jawaharlal Nehru Port – Export Terminal",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 17.6,
+        "humidity_percent": 74.0,
+        "gps_accuracy_meters": 5.0,
+        "sensor_id": "SENS-PORT-JNPT-01",
+        "sensor_verified": true
+      },
+      "notes": "⚠️ Temperature recorded at 17.6°C – 5.6°C above cold-chain threshold. Duration: ~90 min during dock unloading. Flagged by system.",
+      "event_hash": "1c6f3b8a2d9e045678901bcdef2345671c6f3b8a2d9e045678901bcdef234567",
+      "previous_event_hash": "2f8d1a7c9b5e034567890abcde1234562f8d1a7c9b5e034567890abcde123456"
+    },
+    {
+      "event_id": "e1a72b3c-0007-4a1b-9c3e-112233445506",
+      "event_type": "certification_issued",
+      "sequence_number": 7,
+      "timestamp": "2025-03-14T18:00:00+05:30",
+      "actor": {
+        "actor_id": "CERT-APEDA-IN",
+        "actor_type": "certifier",
+        "name": "APEDA – Agricultural and Processed Food Products Export Development Authority",
+        "risk_score": 0.02
+      },
+      "location": {
+        "latitude": 18.9500,
+        "longitude": 72.9333,
+        "facility_id": "PORT-JNPT-MUMBAI",
+        "facility_name": "APEDA Inspection Counter – JNPT",
+        "country": "IN"
+      },
+      "sensor_reading": {
+        "temperature_celsius": null,
+        "humidity_percent": null,
+        "gps_accuracy_meters": null,
+        "sensor_id": null,
+        "sensor_verified": false
+      },
+      "notes": "GI tag and phytosanitary certificate issued. Organic certification verified against APEDA registry.",
+      "event_hash": "8a2e5d4f1b7c903456789012345abcde8a2e5d4f1b7c903456789012345abcde",
+      "previous_event_hash": "1c6f3b8a2d9e045678901bcdef2345671c6f3b8a2d9e045678901bcdef234567"
+    },
+    {
+      "event_id": "e1a72b3c-0008-4a1b-9c3e-112233445507",
+      "event_type": "delivery",
+      "sequence_number": 8,
+      "timestamp": "2025-03-18T10:30:00+04:00",
+      "actor": {
+        "actor_id": "BUYER-ABUDHABI-012",
+        "actor_type": "buyer",
+        "name": "Gulf Fresh Imports LLC",
+        "risk_score": 0.05
+      },
+      "location": {
+        "latitude": 24.4539,
+        "longitude": 54.3773,
+        "facility_id": "WH-ABUDHABI-FRESH-03",
+        "facility_name": "Gulf Fresh Central Warehouse – Abu Dhabi",
+        "country": "AE"
+      },
+      "sensor_reading": {
+        "temperature_celsius": 11.2,
+        "humidity_percent": 83.5,
+        "gps_accuracy_meters": 3.3,
+        "sensor_id": "SENS-WH-AD-03",
+        "sensor_verified": true
+      },
+      "notes": "Delivery accepted. Quantity verified: 2388 kg (12 kg loss, within tolerance). Quality inspection passed.",
+      "event_hash": "4d9c1e6f8a2b705678901234efabcd914d9c1e6f8a2b705678901234efabcd91",
+      "previous_event_hash": "8a2e5d4f1b7c903456789012345abcde8a2e5d4f1b7c903456789012345abcde"
+    }
+  ],
+
+  "sensor_summary": {
+    "avg_temperature_celsius": 14.9,
+    "min_temperature_celsius": 11.2,
+    "max_temperature_celsius": 28.4,
+    "avg_humidity_percent": 78.4,
+    "total_transit_hours": 147.5,
+    "cold_chain_break_count": 1,
+    "cumulative_exposure_score": 0.31,
+    "rate_of_temp_change_avg": 1.24
+  },
+
+  "fraud_assessment": {
+    "assessment_id": "ASSESS-2025-03-18-00471",
+    "assessed_at": "2025-03-18T11:00:00Z",
+    "model_version": "origin-ml-v0.3.1",
+    "overall_risk_score": 0.38,
+    "risk_level": "medium",
+    "scores": {
+      "spoilage_risk": {
+        "score": 0.44,
+        "contributing_factors": [
+          "Cold-chain breach at JNPT dock (90 min @ 17.6°C)",
+          "Above-baseline cumulative exposure score (0.31)",
+          "1 temperature threshold breach detected"
+        ],
+        "threshold_breaches": 1
+      },
+      "tampering_score": {
+        "score": 0.12,
+        "benfords_deviation": 4.31,
+        "arima_residual_zscore": 1.08
+      },
+      "route_deviation_score": {
+        "score": 0.19,
+        "expected_route_hash": "e8f1a2b3c4d5e6f7a8b9c0d1e2f30001",
+        "actual_route_hash":   "e8f1a2b3c4d5e6f7a8b9c0d1e2f30002",
+        "deviation_km": 14.7,
+        "unexplained_stops": 0
+      },
+      "provenance_confidence": {
+        "score": 0.91,
+        "claimed_origin_match": true,
+        "chemical_fingerprint_match": true
+      },
+      "participant_risk_score": 0.13
+    },
+    "alerts": [
+      {
+        "alert_id": "ALERT-20250314-0001",
+        "alert_type": "cold_chain_breach",
+        "severity": "warning",
+        "description": "Temperature exceeded threshold (12°C) by 5.6°C for approximately 90 minutes during custodial handoff at JNPT port.",
+        "triggered_at": "2025-03-14T15:45:00Z",
+        "resolved": false
+      }
+    ],
+    "requires_human_review": true,
+    "explainability": {
+      "top_features": [
+        { "feature": "cumulative_exposure_score",     "importance": 0.38, "direction": "increases_risk" },
+        { "feature": "cold_chain_break_count",        "importance": 0.29, "direction": "increases_risk" },
+        { "feature": "participant_risk_score",        "importance": 0.14, "direction": "decreases_risk" },
+        { "feature": "provenance_confidence_score",   "importance": 0.11, "direction": "decreases_risk" },
+        { "feature": "benfords_deviation",            "importance": 0.08, "direction": "increases_risk" }
+      ],
+      "confidence_interval": {
+        "lower": 0.29,
+        "upper": 0.47
+      }
+    }
+  },
+
+  "cryptographic_layer": {
+    "layer_mode": "mock",
+    "event_hashes": [
+      "3a7f2c91b4d0e5f8a1234567890abcde3a7f2c91b4d0e5f8a1234567890abcde",
+      "7b3e9d12c4f0a56789012345678abcde7b3e9d12c4f0a56789012345678abcde",
+      "d5c1e8f2a3b7904561234abcde78901fd5c1e8f2a3b7904561234abcde78901f",
+      "9e4b7f1d2c5a80234567890efab12349e4b7f1d2c5a80234567890efab123456",
+      "2f8d1a7c9b5e034567890abcde1234562f8d1a7c9b5e034567890abcde123456",
+      "1c6f3b8a2d9e045678901bcdef2345671c6f3b8a2d9e045678901bcdef234567",
+      "8a2e5d4f1b7c903456789012345abcde8a2e5d4f1b7c903456789012345abcde",
+      "4d9c1e6f8a2b705678901234efabcd914d9c1e6f8a2b705678901234efabcd91"
+    ],
+    "batch_hash": "f1e2d3c4b5a6978601234567890abcdfe1e2d3c4b5a69786012345678901abcde",
+    "merkle_root": "aabbcc1122334455667788990011aabbcc1122334455667788990011aabbccdd",
+    "merkle_tree_depth": 3,
+    "commitment_timestamp": "2025-03-18T11:05:00Z",
+    "bitcoin_anchor": {
+      "bitcoin_anchor_txid": "5e3d9a1b7f2c4e6a8b0d2f4e6a8b0d2f5e3d9a1b7f2c4e6a8b0d2f4e6a8b0de",
+      "block_height": null,
+      "block_hash": null,
+      "op_return_data": "4f524947494eaabbcc1122334455667788990011aabbcc1122334455667788990011aabbccdd",
+      "confirmations": null,
+      "network": "mock"
+    },
+    "commitment_proof": {
+      "proof_id": "PROOF-2025-0047-V1",
+      "proof_type": "mock_sha256_merkle",
+      "merkle_path": [
+        { "hash": "7b3e9d12c4f0a56789012345678abcde7b3e9d12c4f0a56789012345678abcde", "direction": "right" },
+        { "hash": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8", "direction": "left" },
+        { "hash": "1122334455667788990011aabbcc1122334455667788990011aabbccddeeff00", "direction": "right" }
+      ],
+      "verification_url": "https://verify.origin.agri/proof/PROOF-2025-0047-V1"
+    }
+  },
+
+  "escrow": {
+    "escrow_id": "ESC-2025-A3F7C291",
+    "escrow_psbt_id": "MOCK-PSBT-cHNidP8BAHQCAAAAASaBcTce3/KF6Tet7qSze3gADAAAAAD/////",
+    "escrow_state": "conditions_met",
+    "escrow_amount_usd": 18500.00,
+    "escrow_amount_btc": 0.2073,
+    "multisig_participants": [
+      {
+        "participant_id": "BUYER-ABUDHABI-012",
+        "role": "buyer",
+        "signed": true,
+        "mock_public_key": "02c9b2d7e3f1a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9",
+        "signed_at": "2025-03-14T10:00:00Z"
+      },
+      {
+        "participant_id": "COOP-KONKAN-MANGO-003",
+        "role": "seller",
+        "signed": true,
+        "mock_public_key": "03a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+        "signed_at": "2025-03-14T10:15:00Z"
+      },
+      {
+        "participant_id": "CERT-APEDA-IN",
+        "role": "arbiter",
+        "signed": false,
+        "mock_public_key": "02f0e1d2c3b4a5968778695a4b3c2d1e0f9e8d7c6b5a4938271605041302100ff",
+        "signed_at": null
+      }
+    ],
+    "required_signatures": 2,
+    "total_signatories": 3,
+    "release_conditions": [
+      {
+        "condition_id": "COND-001",
+        "description": "Overall fraud risk score must be below 0.50",
+        "condition_type": "fraud_score_below",
+        "threshold": 0.50,
+        "met": true,
+        "evaluated_at": "2025-03-18T11:00:00Z"
+      },
+      {
+        "condition_id": "COND-002",
+        "description": "Delivery confirmed by buyer at destination warehouse",
+        "condition_type": "delivery_confirmed",
+        "threshold": null,
+        "met": true,
+        "evaluated_at": "2025-03-18T10:30:00Z"
+      },
+      {
+        "condition_id": "COND-003",
+        "description": "GI certification verified by certifier",
+        "condition_type": "cert_verified",
+        "threshold": null,
+        "met": true,
+        "evaluated_at": "2025-03-14T18:00:00Z"
+      },
+      {
+        "condition_id": "COND-004",
+        "description": "Human review of cold-chain breach alert completed by auditor",
+        "condition_type": "manual_approval",
+        "threshold": null,
+        "met": false,
+        "evaluated_at": null
+      }
+    ],
+    "funded_at": "2025-03-13T08:00:00Z",
+    "released_at": null,
+    "settlement_timestamp": null,
+    "dispute": null
+  },
+
+  "certification": {
+    "certifications": [
+      {
+        "cert_id": "CERT-GI-ALPHONSO-2025-00312",
+        "cert_type": "GI_tag",
+        "issuing_body": "Geographical Indications Registry – India",
+        "issued_date": "2025-03-14",
+        "expiry_date": "2026-03-13",
+        "verified": true,
+        "verification_method": "api_lookup",
+        "cert_hash": "b7a3e8f1c2d4509623456789abcde012b7a3e8f1c2d4509623456789abcde012"
+      },
+      {
+        "cert_id": "CERT-ORG-APEDA-2025-09847",
+        "cert_type": "organic",
+        "issuing_body": "APEDA – India Organic Certification",
+        "issued_date": "2024-11-01",
+        "expiry_date": "2025-10-31",
+        "verified": true,
+        "verification_method": "api_lookup",
+        "cert_hash": "c9b4f2e7d1a3604512345678bcdef123c9b4f2e7d1a3604512345678bcdef123"
+      },
+      {
+        "cert_id": "CERT-PHYTO-JNPT-2025-00447",
+        "cert_type": "phytosanitary",
+        "issuing_body": "Plant Quarantine Order – Government of India",
+        "issued_date": "2025-03-14",
+        "expiry_date": "2025-04-14",
+        "verified": true,
+        "verification_method": "manual",
+        "cert_hash": "e1d5a3f8b2c7016789012345cdef0123e1d5a3f8b2c7016789012345cdef0123"
+      }
+    ]
+  },
+
+  "metadata": {
+    "created_at": "2025-03-12T06:30:00Z",
+    "updated_at": "2025-03-18T11:05:00Z",
+    "created_by": "origin-ingestion-service-v1",
+    "api_version": "v1",
+    "record_status": "under_review",
+    "accessible_to": ["farmer", "buyer", "auditor", "certifier"],
+    "tags": ["alphonso", "mango", "GI-tag", "cold-chain-alert", "medium-risk", "mock-blockchain"]
+  }
+}

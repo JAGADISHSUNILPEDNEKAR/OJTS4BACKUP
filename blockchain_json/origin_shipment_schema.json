@@ -1,0 +1,473 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://origin.agri/schemas/shipment/v1",
+  "title": "OriginShipment",
+  "description": "Full lifecycle schema for an agricultural shipment in the Origin system. Cryptographic fields are currently simulated and are forward-compatible with real Merkle, Bitcoin, and PSBT implementations.",
+  "type": "object",
+  "required": [
+    "shipment_id",
+    "schema_version",
+    "product",
+    "provenance",
+    "events",
+    "sensor_summary",
+    "fraud_assessment",
+    "cryptographic_layer",
+    "escrow",
+    "certification",
+    "metadata"
+  ],
+  "properties": {
+
+    "shipment_id": {
+      "type": "string",
+      "description": "Globally unique identifier for the shipment (UUID v4).",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version for forward compatibility.",
+      "enum": ["1.0.0"]
+    },
+
+    "product": {
+      "type": "object",
+      "description": "Describes the agricultural product being tracked.",
+      "required": ["product_id", "name", "category", "variety", "quantity_kg", "unit", "batch_id", "harvest_date"],
+      "properties": {
+        "product_id":    { "type": "string" },
+        "name":          { "type": "string" },
+        "category":      { "type": "string", "enum": ["grain", "produce", "dairy", "meat", "spice", "beverage", "processed"] },
+        "variety":       { "type": "string" },
+        "quantity_kg":   { "type": "number", "minimum": 0 },
+        "unit":          { "type": "string", "enum": ["kg", "litre", "unit"] },
+        "batch_id":      { "type": "string", "description": "Unique batch/lot number assigned at harvest." },
+        "harvest_date":  { "type": "string", "format": "date" },
+        "expected_shelf_life_days": { "type": "integer", "minimum": 1 }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "Farm origin and geographic provenance data.",
+      "required": ["farm_id", "farmer_id", "farm_name", "location", "country", "cooperative_id"],
+      "properties": {
+        "farm_id":          { "type": "string" },
+        "farmer_id":        { "type": "string" },
+        "farm_name":        { "type": "string" },
+        "cooperative_id":   { "type": "string" },
+        "location": {
+          "type": "object",
+          "required": ["latitude", "longitude", "region", "district"],
+          "properties": {
+            "latitude":  { "type": "number" },
+            "longitude": { "type": "number" },
+            "region":    { "type": "string" },
+            "district":  { "type": "string" },
+            "country":   { "type": "string" }
+          }
+        },
+        "country":                 { "type": "string" },
+        "claimed_origin_label":    { "type": "string", "description": "Origin label as declared by the farmer/seller." },
+        "provenance_verified":     { "type": "boolean" }
+      }
+    },
+
+    "events": {
+      "type": "array",
+      "description": "Ordered list of all supply chain events for this shipment.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["event_id", "event_type", "timestamp", "actor", "location", "sensor_reading", "event_hash"],
+        "properties": {
+          "event_id":    { "type": "string", "description": "UUID v4 for this event." },
+          "event_type":  {
+            "type": "string",
+            "enum": [
+              "harvest",
+              "packaging",
+              "quality_check",
+              "cold_storage_entry",
+              "cold_storage_exit",
+              "transport_departure",
+              "transport_arrival",
+              "custodial_handoff",
+              "customs_clearance",
+              "warehouse_entry",
+              "warehouse_exit",
+              "delivery",
+              "certification_issued",
+              "fraud_alert",
+              "dispute_raised"
+            ]
+          },
+          "sequence_number": { "type": "integer", "description": "Monotonically increasing sequence within this shipment." },
+          "timestamp":       { "type": "string", "format": "date-time" },
+          "actor": {
+            "type": "object",
+            "description": "The participant who recorded this event.",
+            "required": ["actor_id", "actor_type", "name"],
+            "properties": {
+              "actor_id":   { "type": "string" },
+              "actor_type": { "type": "string", "enum": ["farmer", "cooperative", "logistics", "warehouse", "customs", "buyer", "auditor", "certifier"] },
+              "name":       { "type": "string" },
+              "risk_score": { "type": "number", "minimum": 0, "maximum": 1, "description": "Participant's historical risk score from GNN model." }
+            }
+          },
+          "location": {
+            "type": "object",
+            "required": ["latitude", "longitude", "facility_id", "facility_name"],
+            "properties": {
+              "latitude":      { "type": "number" },
+              "longitude":     { "type": "number" },
+              "facility_id":   { "type": "string" },
+              "facility_name": { "type": "string" },
+              "country":       { "type": "string" }
+            }
+          },
+          "sensor_reading": {
+            "type": "object",
+            "description": "Environmental sensor data at the time of this event.",
+            "properties": {
+              "temperature_celsius":  { "type": ["number", "null"] },
+              "humidity_percent":     { "type": ["number", "null"] },
+              "gps_accuracy_meters":  { "type": ["number", "null"] },
+              "sensor_id":            { "type": ["string", "null"] },
+              "sensor_verified":      { "type": "boolean" }
+            }
+          },
+          "notes":          { "type": "string" },
+          "event_hash": {
+            "type": "string",
+            "description": "[MOCK] SHA-256 hash of canonical JSON of this event. Will be produced by the real Merkle engine in production.",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "previous_event_hash": {
+            "type": ["string", "null"],
+            "description": "[MOCK] Hash of the immediately preceding event, forming a hash chain. Null for the first event.",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+
+    "sensor_summary": {
+      "type": "object",
+      "description": "Aggregated sensor statistics over the entire shipment journey.",
+      "properties": {
+        "avg_temperature_celsius":   { "type": "number" },
+        "min_temperature_celsius":   { "type": "number" },
+        "max_temperature_celsius":   { "type": "number" },
+        "avg_humidity_percent":      { "type": "number" },
+        "total_transit_hours":       { "type": "number" },
+        "cold_chain_break_count":    { "type": "integer", "description": "Number of times temperature exceeded threshold." },
+        "cumulative_exposure_score": { "type": "number", "minimum": 0, "maximum": 1, "description": "Engineered feature: area under temperature-time curve normalised to 0–1." },
+        "rate_of_temp_change_avg":   { "type": "number", "description": "Mean rate of temperature change (°C/hr)." }
+      }
+    },
+
+    "fraud_assessment": {
+      "type": "object",
+      "description": "Output from the ML fraud detection engine. All scores are 0.0 (no risk) to 1.0 (maximum risk).",
+      "required": ["assessment_id", "assessed_at", "model_version", "overall_risk_score", "risk_level", "scores"],
+      "properties": {
+        "assessment_id":      { "type": "string" },
+        "assessed_at":        { "type": "string", "format": "date-time" },
+        "model_version":      { "type": "string" },
+        "overall_risk_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "risk_level":         { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "scores": {
+          "type": "object",
+          "description": "Individual fraud signal scores from each detection model.",
+          "required": ["spoilage_risk", "tampering_score", "route_deviation_score", "provenance_confidence"],
+          "properties": {
+            "spoilage_risk": {
+              "type": "object",
+              "description": "Isolation Forest + LSTM Autoencoder output for cold-chain violation.",
+              "properties": {
+                "score":           { "type": "number", "minimum": 0, "maximum": 1 },
+                "contributing_factors": { "type": "array", "items": { "type": "string" } },
+                "threshold_breaches": { "type": "integer" }
+              }
+            },
+            "tampering_score": {
+              "type": "object",
+              "description": "Benford's Law + ARIMA residual analysis output for data manipulation.",
+              "properties": {
+                "score":              { "type": "number", "minimum": 0, "maximum": 1 },
+                "benfords_deviation": { "type": "number", "description": "Chi-square deviation from Benford distribution." },
+                "arima_residual_zscore": { "type": "number" }
+              }
+            },
+            "route_deviation_score": {
+              "type": "object",
+              "description": "GNN + LSTM timing model output for abnormal routing or diversion.",
+              "properties": {
+                "score":                    { "type": "number", "minimum": 0, "maximum": 1 },
+                "expected_route_hash":      { "type": "string" },
+                "actual_route_hash":        { "type": "string" },
+                "deviation_km":             { "type": "number" },
+                "unexplained_stops":        { "type": "integer" }
+              }
+            },
+            "provenance_confidence": {
+              "type": "object",
+              "description": "Supervised/ensemble classifier output for origin authenticity.",
+              "properties": {
+                "score":                 { "type": "number", "minimum": 0, "maximum": 1,
+                                           "description": "Higher = more confident provenance is genuine." },
+                "claimed_origin_match":  { "type": "boolean" },
+                "chemical_fingerprint_match": { "type": ["boolean", "null"] }
+              }
+            },
+            "participant_risk_score": {
+              "type": "number", "minimum": 0, "maximum": 1,
+              "description": "GNN-based aggregate risk score across all participants in this shipment."
+            }
+          }
+        },
+        "alerts": {
+          "type": "array",
+          "description": "Triggered fraud alert records.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "alert_id":    { "type": "string" },
+              "alert_type":  { "type": "string" },
+              "severity":    { "type": "string", "enum": ["info", "warning", "critical"] },
+              "description": { "type": "string" },
+              "triggered_at":{ "type": "string", "format": "date-time" },
+              "resolved":    { "type": "boolean" }
+            }
+          }
+        },
+        "requires_human_review": { "type": "boolean" },
+        "explainability": {
+          "type": "object",
+          "description": "SHAP/feature importance values for model transparency.",
+          "properties": {
+            "top_features": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "feature":    { "type": "string" },
+                  "importance": { "type": "number" },
+                  "direction":  { "type": "string", "enum": ["increases_risk", "decreases_risk"] }
+                }
+              }
+            },
+            "confidence_interval": {
+              "type": "object",
+              "properties": {
+                "lower": { "type": "number" },
+                "upper": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "cryptographic_layer": {
+      "type": "object",
+      "description": "[MOCK LAYER] Simulates outputs from the Merkle commitment engine and Bitcoin anchoring service. All fields prefixed with their future real source. Replace values with real outputs when blockchain layer is implemented.",
+      "required": ["layer_mode", "batch_hash", "merkle_root", "bitcoin_anchor", "commitment_proof"],
+      "properties": {
+        "layer_mode": {
+          "type": "string",
+          "enum": ["mock", "testnet", "mainnet"],
+          "description": "Indicates whether cryptographic values are simulated (mock), on Bitcoin testnet, or mainnet."
+        },
+        "event_hashes": {
+          "type": "array",
+          "description": "[MOCK] Ordered list of SHA-256 hashes of each event. These become the leaves of the Merkle tree.",
+          "items": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        },
+        "batch_hash": {
+          "type": "string",
+          "description": "[MOCK] SHA-256 hash of the concatenated canonical JSON of all events in this shipment.",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "merkle_root": {
+          "type": "string",
+          "description": "[MOCK] Root of the Merkle tree constructed from all event_hashes. In production, this is computed by the Merkle builder service and anchored to Bitcoin.",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "merkle_tree_depth": {
+          "type": "integer",
+          "description": "[MOCK] Depth of the Merkle tree (ceil(log2(n_events)))."
+        },
+        "commitment_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "[MOCK] Timestamp when the commitment was finalized. In production, derived from Bitcoin block timestamp."
+        },
+        "bitcoin_anchor": {
+          "type": "object",
+          "description": "[MOCK] Simulates a Bitcoin OP_RETURN transaction that anchors the Merkle root.",
+          "properties": {
+            "bitcoin_anchor_txid": {
+              "type": "string",
+              "description": "[MOCK] Simulated Bitcoin transaction ID (64 hex chars). Replace with real txid from Bitcoin Core RPC.",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "block_height": {
+              "type": ["integer", "null"],
+              "description": "[MOCK] Bitcoin block height at which the anchor tx was confirmed."
+            },
+            "block_hash": {
+              "type": ["string", "null"],
+              "description": "[MOCK] Bitcoin block hash.",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "op_return_data": {
+              "type": "string",
+              "description": "[MOCK] Hex-encoded OP_RETURN payload (merkle_root prefixed with ORIGIN identifier)."
+            },
+            "confirmations": {
+              "type": ["integer", "null"],
+              "description": "[MOCK] Number of confirmations as of last check."
+            },
+            "network": {
+              "type": "string",
+              "enum": ["mock", "testnet", "mainnet"]
+            }
+          }
+        },
+        "commitment_proof": {
+          "type": "object",
+          "description": "[MOCK] Simulates a Merkle inclusion proof for auditor verification. In production, this is a real Merkle path.",
+          "properties": {
+            "proof_id":     { "type": "string" },
+            "proof_type":   { "type": "string", "enum": ["mock_sha256_merkle", "real_sha256_merkle"] },
+            "merkle_path": {
+              "type": "array",
+              "description": "Sibling hashes along the Merkle path from leaf to root.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "hash":      { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                  "direction": { "type": "string", "enum": ["left", "right"] }
+                }
+              }
+            },
+            "verification_url": {
+              "type": "string",
+              "description": "URL to a public verifier endpoint for auditors to verify proof integrity."
+            }
+          }
+        }
+      }
+    },
+
+    "escrow": {
+      "type": "object",
+      "description": "[MOCK LAYER] Simulates PSBT-based multisignature escrow settlement. Replace with real PSBT engine outputs in production.",
+      "required": ["escrow_id", "escrow_state", "multisig_participants", "escrow_amount_usd"],
+      "properties": {
+        "escrow_id":           { "type": "string", "description": "[MOCK] Unique escrow identifier." },
+        "escrow_psbt_id": {
+          "type": ["string", "null"],
+          "description": "[MOCK] Simulated PSBT (Partially Signed Bitcoin Transaction) identifier. In production, this is a base64 PSBT string."
+        },
+        "escrow_state": {
+          "type": "string",
+          "enum": ["not_initiated", "pending", "funded", "conditions_met", "released", "disputed", "refunded"],
+          "description": "Current state of the escrow lifecycle."
+        },
+        "escrow_amount_usd":   { "type": "number", "minimum": 0 },
+        "escrow_amount_btc":   { "type": ["number", "null"], "description": "[MOCK] BTC equivalent at time of escrow creation." },
+        "multisig_participants": {
+          "type": "array",
+          "description": "[MOCK] Simulates m-of-n multisig signatories. In production, each entry has a real xpub or Bitcoin address.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "participant_id":   { "type": "string" },
+              "role":             { "type": "string", "enum": ["buyer", "seller", "arbiter", "certifier"] },
+              "signed":           { "type": "boolean" },
+              "mock_public_key":  { "type": "string", "description": "[MOCK] Simulated compressed public key (33 bytes hex)." },
+              "signed_at":        { "type": ["string", "null"], "format": "date-time" }
+            }
+          }
+        },
+        "required_signatures":  { "type": "integer", "description": "Minimum signatures needed to release (m in m-of-n)." },
+        "total_signatories":    { "type": "integer", "description": "Total possible signatories (n in m-of-n)." },
+        "release_conditions": {
+          "type": "array",
+          "description": "Conditions that must be met before escrow is released.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "condition_id":  { "type": "string" },
+              "description":   { "type": "string" },
+              "condition_type":{ "type": "string", "enum": ["fraud_score_below", "delivery_confirmed", "cert_verified", "manual_approval"] },
+              "threshold":     { "type": ["number", "null"] },
+              "met":           { "type": "boolean" },
+              "evaluated_at":  { "type": ["string", "null"], "format": "date-time" }
+            }
+          }
+        },
+        "funded_at":            { "type": ["string", "null"], "format": "date-time" },
+        "released_at":          { "type": ["string", "null"], "format": "date-time" },
+        "settlement_timestamp": { "type": ["string", "null"], "format": "date-time" },
+        "dispute": {
+          "type": ["object", "null"],
+          "description": "Present if the escrow is in a disputed state.",
+          "properties": {
+            "dispute_id":      { "type": "string" },
+            "raised_by":       { "type": "string" },
+            "reason":          { "type": "string" },
+            "raised_at":       { "type": "string", "format": "date-time" },
+            "resolved":        { "type": "boolean" },
+            "resolution_notes":{ "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "certification": {
+      "type": "object",
+      "description": "Certification metadata claimed and verified for this shipment.",
+      "properties": {
+        "certifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "cert_id":          { "type": "string" },
+              "cert_type":        { "type": "string", "enum": ["organic", "fair_trade", "GlobalGAP", "ISO22000", "halal", "kosher", "GI_tag", "phytosanitary"] },
+              "issuing_body":     { "type": "string" },
+              "issued_date":      { "type": "string", "format": "date" },
+              "expiry_date":      { "type": "string", "format": "date" },
+              "verified":         { "type": "boolean" },
+              "verification_method": { "type": "string", "enum": ["api_lookup", "qr_scan", "manual", "mock"] },
+              "cert_hash":        { "type": "string", "description": "SHA-256 of the certificate document." }
+            }
+          }
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "System metadata for API compatibility and audit trails.",
+      "required": ["created_at", "updated_at", "created_by", "record_status"],
+      "properties": {
+        "created_at":       { "type": "string", "format": "date-time" },
+        "updated_at":       { "type": "string", "format": "date-time" },
+        "created_by":       { "type": "string" },
+        "api_version":      { "type": "string" },
+        "record_status":    { "type": "string", "enum": ["active", "archived", "under_review", "disputed"] },
+        "accessible_to":    {
+          "type": "array",
+          "items": { "type": "string", "enum": ["farmer", "buyer", "auditor", "certifier", "regulator", "public"] }
+        },
+        "tags":             { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
