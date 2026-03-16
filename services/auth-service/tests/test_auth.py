@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 sys.modules['asyncpg'] = MagicMock()
 sys.modules['psycopg2'] = MagicMock()
 
@@ -13,6 +13,14 @@ from database import get_db
 
 from models import User
 from core.security import get_password_hash, create_access_token, create_refresh_token
+
+# Mock lockout helpers globally for tests
+import main
+main._check_lockout = AsyncMock()
+main._record_failed_attempt = AsyncMock()
+main._clear_failed_attempts = AsyncMock()
+main._blacklist_token = AsyncMock()
+main._is_token_blacklisted = AsyncMock(return_value=False)
 
 # Mock user data
 MOCK_USER_ID = uuid.uuid4()
