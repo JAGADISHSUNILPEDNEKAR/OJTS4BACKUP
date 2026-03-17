@@ -25,6 +25,7 @@ class Shipment(Base):
     current_custodian_id = Column(pgUUID(as_uuid=True), nullable=False)
     destination = Column(String(255), nullable=False)
     status = Column(String(50), default="CREATED")
+    risk_score = Column(Float, nullable=True)
     manifest_url = Column(String(512), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -50,7 +51,7 @@ def bulk_seed(limit=None):
     
     total_processed = 0
     for chunk in reader:
-        if limit and total_processed >= limit:
+        if limit is not None and total_processed >= limit:
             break
             
         print(f"Processing chunk (total so far: {total_processed})...")
@@ -71,6 +72,7 @@ def bulk_seed(limit=None):
                 current_custodian_id=uuid.UUID(fid),
                 destination=str(row.get('order_city', 'Unknown')),
                 status="DELIVERED" if row['delivery_status'] == 'Shipping on time' else "DELAYED",
+                risk_score=float(row.get('risk_score', row.get('late_delivery_risk', 0.1))),
                 created_at=order_date
             )
             shipments.append(shipment)
@@ -97,6 +99,7 @@ def bulk_seed(limit=None):
                         "current_custodian_id": s.current_custodian_id,
                         "destination": s.destination,
                         "status": s.status,
+                        "risk_score": s.risk_score,
                         "created_at": s.created_at
                     } for s in shipments
                 ]).on_conflict_do_nothing()
@@ -203,12 +206,12 @@ def stream_seed(limit=10, delay=2, email="tester@origin.app", password="password
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Origin Hybrid Data Seeder")
     parser.add_argument("--mode", choices=["bulk", "stream"], default="bulk")
-    parser.add_argument("--limit", type=int, default=1000)
+    parser.add_argument("--limit", type=int, default=-1, help="Limit number of records (default: -1 for all)")
     parser.add_argument("--delay", type=float, default=1.0)
     
     args = parser.parse_args()
     
     if args.mode == "bulk":
-        bulk_seed(limit=args.limit)
+        bulk_seed(limit=None if args.limit == -1 else args.limit)
     else:
         stream_seed(limit=args.limit, delay=args.delay)
