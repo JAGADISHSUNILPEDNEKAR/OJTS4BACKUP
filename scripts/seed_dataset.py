@@ -5,7 +5,7 @@ import time
 import argparse
 import requests
 import asyncio
-from sqlalchemy import create_engine, Column, String, Float, Boolean, DateTime, func, ForeignKey
+from sqlalchemy import create_engine, Column, String, Float, Boolean, DateTime, func, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID as pgUUID
 from sqlalchemy.orm import sessionmaker, declarative_base
 from datetime import datetime, timezone
@@ -39,11 +39,22 @@ class SensorReading(Base):
     humidity = Column(Float, nullable=False)
     tamper_flag = Column(Boolean, default=False)
 
-def bulk_seed(limit=None):
+def bulk_seed(limit=None, truncate=True):
     print(f"Starting bulk seed from {CSV_PATH}...")
     engine = create_engine(DB_URL)
     Session = sessionmaker(bind=engine)
     session = Session()
+
+    if truncate:
+        print("Clearing existing data...")
+        try:
+            session.execute(text("TRUNCATE TABLE shipments CASCADE;"))
+            session.execute(text("TRUNCATE TABLE sensor_readings CASCADE;"))
+            session.commit()
+            print("Data cleared successfully.")
+        except Exception as e:
+            print(f"Error clearing data: {e}")
+            session.rollback()
 
     # Load CSV in chunks
     chunk_size = 5000
@@ -66,13 +77,21 @@ def bulk_seed(limit=None):
             
             order_date = pd.to_datetime(row['order_date_dateorders']).tz_localize('UTC').to_pydatetime()
             
+            # Handle risk score: preferentially use 'risk_score', then 'late_delivery_risk', then default to 0.1
+            # Ensure it's not NaN
+            raw_risk = row.get('risk_score')
+            if pd.isna(raw_risk):
+                raw_risk = row.get('late_delivery_risk', 0.1)
+                if pd.isna(raw_risk):
+                    raw_risk = 0.1
+
             shipment = Shipment(
                 id=uuid.UUID(sid),
                 farmer_id=uuid.UUID(fid),
                 current_custodian_id=uuid.UUID(fid),
                 destination=str(row.get('order_city', 'Unknown')),
                 status="DELIVERED" if row['delivery_status'] == 'Shipping on time' else "DELAYED",
-                risk_score=float(row.get('risk_score', row.get('late_delivery_risk', 0.1))),
+                risk_score=float(raw_risk),
                 created_at=order_date
             )
             shipments.append(shipment)
@@ -212,6 +231,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.mode == "bulk":
-        bulk_seed(limit=None if args.limit == -1 else args.limit)
+        bulk_seed(limit=None if args.limit == -1 else args.limit, truncate=True)
     else:
         stream_seed(limit=args.limit, delay=args.delay)
