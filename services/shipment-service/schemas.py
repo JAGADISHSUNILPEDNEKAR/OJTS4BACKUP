@@ -28,6 +28,7 @@ class ShipmentResponse(ShipmentBase):
     id: UUID
     current_custodian_id: UUID
     status: str
+    risk_score: Optional[float] = None
     manifest_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime

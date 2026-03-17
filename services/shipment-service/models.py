@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, func, ForeignKey
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import Base
@@ -12,6 +12,7 @@ class Shipment(Base):
     current_custodian_id = Column(UUID(as_uuid=True), nullable=False)
     destination = Column(String(255), nullable=False)
     status = Column(String(50), default="CREATED")
+    risk_score = Column(Float, nullable=True)
     manifest_url = Column(String(512), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
