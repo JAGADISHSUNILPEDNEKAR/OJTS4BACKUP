@@ -10,7 +10,7 @@ async def extract_features(shipment_id: str) -> Dict[str, Any]:
     async with AsyncSessionLocal() as session:
         # We query the sensor_readings hypertable for the latest 60 readings
         result = await session.execute(
-            text("SELECT temperature, humidity FROM sensor_readings WHERE shipment_id = :sid ORDER BY timestamp DESC LIMIT 60"),
+            text("SELECT temperature, humidity FROM sensor_readings WHERE shipment_id = :sid ORDER BY time DESC LIMIT 60"),
             {"sid": shipment_id}
         )
         rows = result.fetchall()
