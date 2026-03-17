@@ -57,7 +57,8 @@ export default function Home() {
     { label: 'Active Shipments', value: shipments.length.toString(), change: '+12.5%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>, color: 'var(--primary)' },
     { label: 'Open ML Alerts', value: alerts.length.toString(), change: '-4.2%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>, color: 'var(--danger)' },
     { label: 'Escrow Held', value: '$4.2M', change: '+8.1%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>, color: 'var(--secondary)' },
-    { label: 'Avg Risk Index', value: '18.4', change: '-2.1%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>, color: 'var(--text-muted)' },
+    { label: 'Avg Risk Index',      value: (shipments.length > 0 ? (shipments.reduce((acc: number, s: Shipment) => acc + (s.risk_score || 0), 0) / shipments.length * 100).toFixed(2) : '0.00') + '%'
+, change: '-2.1%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>, color: 'var(--text-muted)' },
   ];
 
   const bottomShortcuts = [
@@ -163,9 +164,9 @@ export default function Home() {
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', width: '60px' }}>
-                        <div style={{ height: '100%', width: `10%`, background: 'var(--secondary)', borderRadius: '2px' }}></div>
+                        <div style={{ height: '100%', width: `${(row.risk_score || 0) * 100}%`, background: (row.risk_score || 0) > 0.8 ? 'var(--danger)' : (row.risk_score || 0) > 0.4 ? 'var(--warning)' : 'var(--secondary)', borderRadius: '2px' }}></div>
                       </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>10</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{((row.risk_score || 0) * 100).toFixed(1)}%</span>
                     </div>
                   </td>
                   <td style={{ color: 'var(--text-muted)' }}>--</td>

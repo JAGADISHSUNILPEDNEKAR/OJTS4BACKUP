@@ -127,6 +127,7 @@ export interface Shipment {
     destination: string;
     farmer_id: string;
     status: string;
+    risk_score?: number;
     [key: string]: unknown;
 }
 
