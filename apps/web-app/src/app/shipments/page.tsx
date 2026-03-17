@@ -95,9 +95,9 @@ export default function ShipmentsPage() {
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                             <div style={{ flex: 1, height: '6px', background: '#f1f5f9', borderRadius: '3px', width: '80px' }}>
-                                                <div style={{ height: '100%', width: `10%`, background: 'var(--secondary)', borderRadius: '3px' }}></div>
+                                                <div style={{ height: '100%', width: `${(shp.risk_score || 0) * 100}%`, background: (shp.risk_score || 0) > 0.8 ? 'var(--danger)' : (shp.risk_score || 0) > 0.4 ? 'var(--warning)' : 'var(--secondary)', borderRadius: '3px' }}></div>
                                             </div>
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>10%</span>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{((shp.risk_score || 0) * 100).toFixed(1)}%</span>
                                         </div>
                                     </td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{new Date().toLocaleDateString()}</td>
