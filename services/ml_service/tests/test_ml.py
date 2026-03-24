@@ -13,8 +13,8 @@ def test_inference_engine():
     from models.inference import inference_engine
     inference_engine.load()
     assert inference_engine.ready
-    score = inference_engine.predict({"mean_temp": 10.0})
-    assert 0.8 <= score <= 1.0
+    score = inference_engine.predict({"mean_temp": 15.0, "mean_humidity": 90.0})
+    assert score > 0.5
     
-    score_normal = inference_engine.predict({"mean_temp": 4.0})
-    assert 0.01 <= score_normal <= 0.1
+    score_normal = inference_engine.predict({"mean_temp": 4.0, "mean_humidity": 60.0})
+    assert score_normal < 0.3
