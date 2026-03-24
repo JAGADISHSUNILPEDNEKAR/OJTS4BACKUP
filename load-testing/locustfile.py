@@ -19,17 +19,21 @@ class IoTDeviceUser(HttpUser):
     @task
     def send_telemetry(self):
         """Simulate sending a telemetry payload to the API"""
+        readings = []
+        for _ in range(5):
+            readings.append({
+                "time": datetime.now(timezone.utc).isoformat(),
+                "device_id": self.device_id,
+                "shipment_id": self.shipment_id,
+                "temperature": round(random.uniform(-5.0, 15.0), 2),
+                "humidity": round(random.uniform(30.0, 95.0), 2),
+                "gps_lat": round(random.uniform(-90.0, 90.0), 6),
+                "gps_long": round(random.uniform(-180.0, 180.0), 6),
+                "tamper_flag": random.random() > 0.99  # 1% chance of tamper
+            })
+            
         payload = {
-            "readings": [
-                {
-                    "time": datetime.now(timezone.utc).isoformat(),
-                    "device_id": self.device_id,
-                    "shipment_id": self.shipment_id,
-                    "temperature": round(random.uniform(-5.0, 15.0), 2),
-                    "humidity": round(random.uniform(30.0, 95.0), 2),
-                    "tamper_flag": random.random() > 0.99  # 1% chance of tamper
-                }
-            ]
+            "readings": readings
         }
         
         # FastAPI accesses the raw request body to verify the signature.
