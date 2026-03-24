@@ -194,6 +194,39 @@ async def download_proof_pdf(
         headers={"Content-Disposition": f"attachment; filename=shipment_{shipment_id}_proof.pdf"}
     )
 
+@app.get("/api/v1/shipments/{shipment_id}/risk")
+async def get_shipment_risk(
+    shipment_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
+    shipment = result.scalars().first()
+    
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+        
+    risk_score = getattr(shipment, "risk_score", None)
+    
+    if risk_score is None:
+        risk_level = "UNKNOWN"
+        insights = ["No ML precheck score available for this shipment."]
+    elif risk_score >= 75.0:
+        risk_level = "HIGH"
+        insights = ["High anomaly detected. Further investigation recommended."]
+    elif risk_score >= 40.0:
+        risk_level = "MEDIUM"
+        insights = ["Moderate risk flagged in initial assessment."]
+    else:
+        risk_level = "LOW"
+        insights = ["Shipment cleared initial ML risk assessment."]
+        
+    return {
+        "shipment_id": str(shipment.id),
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "insights": insights
+    }
+
 @app.get("/api/v1/shipments", response_model=list[ShipmentResponse])
 async def list_shipments(
     db: AsyncSession = Depends(get_db)
