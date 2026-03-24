@@ -6,10 +6,50 @@ import joblib
 
 logger = logging.getLogger(__name__)
 
+class PrecheckModel:
+    def __init__(self):
+        # Top 10 High-Risk Countries from clean_dataset.csv analysis
+        self.high_risk_countries = [
+            "Niger", "Ecuador", "Somalia", "Bielorrusia", "Sudan", 
+            "Barbados", "Trinidad y Tobago", "Afganistan", "Jamaica", "Dinamarca"
+        ]
+        # High-Risk Keywords based on category risk analysis
+        self.high_risk_keywords = [
+            "camera", "electronics", "jewelry", "weapon", "chemical",
+            "medicine", "baseball", "softball", "golf", "sporting"
+        ]
+
+    def assess_risk(self, filename: str, destination: str) -> float:
+        risk_score = 10.0  # Base risk
+        
+        # Check destination
+        dest_lower = destination.lower()
+        for country in self.high_risk_countries:
+            if country.lower() in dest_lower:
+                risk_score += 40.0
+                break
+        
+        # Check filename for risk keywords
+        file_lower = filename.lower()
+        if any(ext in file_lower for ext in ['.exe', '.dll', '.sh', '.bat']):
+            risk_score += 80.0
+            
+        for kw in self.high_risk_keywords:
+            if kw in file_lower:
+                risk_score += 25.0
+                break
+                
+        # Add a bit of deterministic "noise" based on filename length
+        noise = (len(filename) % 10) / 2.0
+        risk_score += noise
+        
+        return min(100.0, risk_score)
+
 class InferenceEngine:
     def __init__(self):
         self.ready = False
         self.model = None
+        self.precheck_model = PrecheckModel()
 
     def load(self):
         logger.info("Loading origin-models artifacts...")
@@ -39,9 +79,11 @@ class InferenceEngine:
         # we convert this to a 0-1 risk score (1 = high risk)
         raw_score = self.model.score_samples(X)[0]
         # Invert and normalize the score to a 0..1 scale roughly
-        # Typical scores from IsolationForest: normal ~ -0.4, anomaly ~ -0.8
         risk_score = min(max((abs(raw_score) - 0.3) / 0.5, 0.0), 1.0)
         
         return float(risk_score)
+
+    def predict_precheck(self, filename: str, destination: str) -> float:
+        return self.precheck_model.assess_risk(filename, destination)
 
 inference_engine = InferenceEngine()

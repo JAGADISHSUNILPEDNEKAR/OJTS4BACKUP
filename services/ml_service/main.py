@@ -50,15 +50,13 @@ async def health_check():
 
 @app.post("/api/v1/ml/precheck", response_model=PrecheckResponse)
 async def ml_precheck(request: PrecheckRequest):
-    if request.filename.endswith(('.exe', '.dll', '.sh', '.bat')):
-        return PrecheckResponse(risk_score=99.9, status="REJECTED", insights={"reason": "Executable file extension detected (High Risk)"})
+    risk_score = inference_engine.predict_precheck(request.filename, request.destination)
     
-    base_risk = 15.0
-    if request.destination.lower() in ["sanctioned_port_a", "high_risk_zone_b"]:
-        base_risk += 50.0
-        
-    random_noise = random.uniform(0.0, 5.0)
-    risk_score = min(100.0, base_risk + random_noise)
+    status = "REJECTED" if risk_score >= 80.0 else "APPROVED"
+    insights = {
+        "model": "precheck_v2_rules",
+        "destination_flag": any(c.lower() in request.destination.lower() for c in inference_engine.precheck_model.high_risk_countries),
+        "filename_flag": any(kw in request.filename.lower() for kw in inference_engine.precheck_model.high_risk_keywords)
+    }
     
-    status = "REJECTED" if risk_score >= 85.0 else "APPROVED"
-    return PrecheckResponse(risk_score=risk_score, status=status, insights={"model": "precheck_v1"})
+    return PrecheckResponse(risk_score=risk_score, status=status, insights=insights)
