@@ -1,36 +1,61 @@
 import logging
 from kafka_producer import publish_message
+from pydantic import BaseModel
+from typing import Set
 
 logger = logging.getLogger("escrow-service.core")
 
-async def process_fund_hold(shipment_id: str) -> dict:
-    logger.info(f"Triggering PSBT flow via Crypto Service for shipment {shipment_id}")
+# In-memory dictionary to track multisig threshold
+SIGNATURE_STORE = {}
+THRESHOLD = 2
+
+class PSBTTriggerRequest(BaseModel):
+    shipment_id: str
+    amount_usd: float
+    amount_btc: float
+    buyer_id: str
+    seller_id: str
+    buyer_pubkey: str
+    seller_pubkey: str
+    required_signatures: int = 2
+
+async def process_fund_hold(data: PSBTTriggerRequest) -> dict:
+    logger.info(f"Triggering PSBT flow via Crypto Service for shipment {data.shipment_id}")
     
-    # Generate the request payload
+    # Generate the request payload dynamically
     request_payload = {
-        "shipment_id": shipment_id,
-        "amount_usd": 18500.00,
-        "amount_btc": 0.2073,
+        "shipment_id": data.shipment_id,
+        "amount_usd": data.amount_usd,
+        "amount_btc": data.amount_btc,
         "participants": [
             {
-                "participant_id": "BUYER-ABUDHABI-012",
+                "participant_id": data.buyer_id,
                 "role": "buyer",
-                "public_key": "02c9b2d7e3f1a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
+                "public_key": data.buyer_pubkey
             },
             {
-                "participant_id": "COOP-KONKAN-MANGO-003",
+                "participant_id": data.seller_id,
                 "role": "seller",
-                "public_key": "03a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1"
+                "public_key": data.seller_pubkey
             }
         ],
-        "required_signatures": 2
+        "required_signatures": data.required_signatures
+    }
+    
+    SIGNATURE_STORE[data.shipment_id] = {
+        "signers": set(),
+        "status": "pending_signatures"
     }
     
     # Publish to crypto-service via Kafka
-    await publish_message("escrow.psbt.request", shipment_id, request_payload)
+    await publish_message("escrow.psbt.request", data.shipment_id, request_payload)
     
     return {
         "status": "PSBT_FLOW_INITIATED",
-        "shipment_id": shipment_id,
+        "shipment_id": data.shipment_id,
         "escrow_state": "pending_crypto"
     }
+
+async def finalize_escrow(shipment_id: str):
+    logger.info(f"Threshold reached! Publishing escrow.psbt.finalize for shipment {shipment_id}")
+    await publish_message("escrow.psbt.finalize", shipment_id, {"shipment_id": shipment_id})
