@@ -2,9 +2,10 @@ import uuid
 import json
 import asyncio
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from aiokafka import AIOKafkaProducer
 from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 
@@ -14,6 +15,7 @@ from schemas import CustodyHandoff, ShipmentResponse
 from core.dependencies import get_current_user_from_token, RoleChecker
 from core.config import settings
 from core.s3_utils import upload_to_s3
+from core.pdf_generator import generate_shipment_proof
 
 app = FastAPI(title="Origin Shipment Service")
 
@@ -168,6 +170,29 @@ async def custody_handoff(
             print(f"Failed to publish to Kafka: {e}")
     
     return {"status": "HANDOFF_VERIFIED", "shipment_id": str(shipment.id)}
+
+@app.get("/api/v1/shipments/{shipment_id}/proof/pdf", response_class=Response)
+async def download_proof_pdf(
+    shipment_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Shipment)
+        .options(selectinload(Shipment.custody_events))
+        .where(Shipment.id == uuid.UUID(shipment_id))
+    )
+    shipment = result.scalars().first()
+    
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+        
+    pdf_bytes = generate_shipment_proof(shipment, shipment.custody_events)
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=shipment_{shipment_id}_proof.pdf"}
+    )
 
 @app.get("/api/v1/shipments", response_model=list[ShipmentResponse])
 async def list_shipments(
