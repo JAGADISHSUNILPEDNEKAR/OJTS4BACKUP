@@ -26,11 +26,14 @@ class InferenceEngine:
         if not self.ready or self.model is None:
             raise RuntimeError("Model not loaded yet")
         
-        # Extract features expected by the model
-        mean_temp = features.get("mean_temp", 0.0)
-        mean_humidity = features.get("mean_humidity", 0.0)
+        # Extract advanced features expected by the model
+        mean_temp = float(features.get("mean_temp", 0.0))
+        mean_humidity = float(features.get("mean_humidity", 0.0))
+        route_deviation = float(features.get("route_deviation", 0.0))
+        time_since_dispatch = float(features.get("time_since_dispatch", 0.0))
+        sensor_anomaly_score = float(features.get("sensor_anomaly_score", 0.0))
         
-        X = np.array([[mean_temp, mean_humidity]])
+        X = np.array([[mean_temp, mean_humidity, route_deviation, time_since_dispatch, sensor_anomaly_score]])
         
         # get anomaly score (score_samples returns negative scores, lower is more anomalous)
         # we convert this to a 0-1 risk score (1 = high risk)
