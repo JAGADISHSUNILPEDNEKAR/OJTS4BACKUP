@@ -4,6 +4,9 @@ from typing import List
 from fastapi import FastAPI
 from pydantic import BaseModel
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results, get_recent_alerts
+from core.database import engine, Base, AsyncSessionLocal
+from models import AlertThreshold
+from sqlalchemy.future import select
 
 logger = logging.getLogger("alert-service")
 
@@ -20,6 +23,21 @@ consumer_task = None
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Alert Service...")
+    
+    # Create DB structures and seed defaults
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(AlertThreshold))
+        existing_thresholds = result.scalars().all()
+        if not existing_thresholds:
+            session.add_all([
+                AlertThreshold(severity="WARNING", threshold_value=0.8, is_active=True),
+                AlertThreshold(severity="CRITICAL", threshold_value=0.9, is_active=True)
+            ])
+            await session.commit()
+            
     await start_kafka_producer()
     global consumer_task
     consumer_task = asyncio.create_task(consume_ml_results())

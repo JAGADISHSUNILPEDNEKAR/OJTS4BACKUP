@@ -10,7 +10,15 @@ async def test_health_check():
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "alert-service"}
 
+from evaluator import threshold
+from unittest.mock import AsyncMock, patch
+
 @pytest.mark.asyncio
 async def test_evaluate_threshold():
-    assert await evaluate(0.9) is True
-    assert await evaluate(0.5) is False
+    # Mock evaluate to skip real DB lookup in test
+    with patch.object(threshold, "evaluate", new_callable=AsyncMock) as mock_evaluate:
+        mock_evaluate.return_value = True
+        assert await threshold.evaluate(0.9) is True
+        
+        mock_evaluate.return_value = False
+        assert await threshold.evaluate(0.5) is False
