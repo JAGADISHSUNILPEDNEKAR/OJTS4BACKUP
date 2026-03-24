@@ -5,8 +5,12 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
-    pub fn new(data: Vec<&[u8]>) -> Self {
+    pub fn from_data(data: &[&[u8]]) -> Self {
         let leaves = data.iter().map(|d| sha256::Hash::hash(d)).collect();
+        MerkleTree { leaves }
+    }
+
+    pub fn from_hashes(leaves: Vec<sha256::Hash>) -> Self {
         MerkleTree { leaves }
     }
 
@@ -46,7 +50,7 @@ mod tests {
     #[test]
     fn test_merkle_root() {
         let data: Vec<&[u8]> = vec![b"leaf1", b"leaf2", b"leaf3"];
-        let tree = MerkleTree::new(data);
+        let tree = MerkleTree::from_data(&data);
         assert!(tree.root().is_some());
     }
 }
