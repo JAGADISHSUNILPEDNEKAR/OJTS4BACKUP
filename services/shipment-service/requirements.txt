@@ -12,3 +12,4 @@ aiokafka
 PyJWT
 email-validator
 python-multipart
+boto3

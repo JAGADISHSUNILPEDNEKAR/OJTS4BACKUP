@@ -2,6 +2,7 @@ import sys
 from unittest.mock import MagicMock
 sys.modules['asyncpg'] = MagicMock()
 sys.modules['psycopg2'] = MagicMock()
+sys.modules['boto3'] = MagicMock()
 
 import pytest
 from httpx import AsyncClient
@@ -57,6 +58,12 @@ async def override_get_db():
     yield MockSession()
 
 app.dependency_overrides[get_db] = override_get_db
+
+# Patch the upload_to_s3 function during tests
+from unittest.mock import patch
+patcher = patch('main.upload_to_s3', return_value=True)
+patcher.start()
+
 
 @pytest.mark.asyncio
 async def test_create_shipment():

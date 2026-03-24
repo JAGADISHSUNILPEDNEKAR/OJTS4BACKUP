@@ -13,6 +13,7 @@ from models import Shipment, CustodyEvent
 from schemas import CustodyHandoff, ShipmentResponse
 from core.dependencies import get_current_user_from_token, RoleChecker
 from core.config import settings
+from core.s3_utils import upload_to_s3
 
 app = FastAPI(title="Origin Shipment Service")
 
@@ -59,7 +60,13 @@ async def create_shipment(
     shipment_id = uuid.uuid4()
     s3_key = f"manifests/{shipment_id}/{manifest.filename}"
     
-    # 2. Upload manifest to S3 (Mocked)
+    # 2. Upload manifest to S3
+    try:
+        file_content = await manifest.read()
+        await asyncio.to_thread(upload_to_s3, file_content, settings.S3_BUCKET_NAME, s3_key)
+    except Exception as e:
+        print(f"Failed to upload to S3: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload manifest to storage")
     
     # 3. Save to DB
     new_shipment = Shipment(
