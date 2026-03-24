@@ -188,43 +188,25 @@ export async function fetchAlerts(): Promise<Alert[]> {
 }
 
 export async function acknowledgeAlert(alertId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to acknowledge alert');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating acknowledge for:', alertId);
-        return { id: alertId, status: 'Acknowledged' };
-    }
+    const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to acknowledge alert');
+    return res.json();
 }
 
 export async function ignoreAlert(alertId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to ignore alert');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating ignore for:', alertId);
-        return { id: alertId, status: 'Ignored' };
-    }
+    const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to ignore alert');
+    return res.json();
 }
 
 export async function bulkAcknowledgeAlerts(alertIds: string[]) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts/bulk-acknowledge`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({ ids: alertIds }),
-        });
-        if (!res.ok) throw new Error('Failed to bulk acknowledge');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating bulk acknowledge');
-        return { acknowledged: alertIds.length };
-    }
+    const res = await authFetch(`${API_BASE_URL}/alerts/bulk-acknowledge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ ids: alertIds }),
+    });
+    if (!res.ok) throw new Error('Failed to bulk acknowledge');
+    return res.json();
 }
 
 // ─── Escrow ──────────────────────────────────────────────────────
@@ -234,53 +216,27 @@ export async function fetchEscrows() {
         if (!res.ok) throw new Error('Failed to fetch escrows');
         return res.json();
     } catch (err) {
-        void err;
-        console.warn('API unavailable, returning mock escrow data');
-        return [
-            { id: 'ESC-8842', counterparty: 'GlobalAgri Ltd.', value: '1.2 BTC', status: 'Locked', date: 'Oct 24, 2024', risk: 8 },
-            { id: 'ESC-8841', counterparty: 'TerraLogistics', value: '0.85 BTC', status: 'Partially Released', date: 'Oct 23, 2024', risk: 12 },
-            { id: 'ESC-8840', counterparty: 'PacOcean Corp', value: '2.5 BTC', status: 'Settled', date: 'Oct 22, 2024', risk: 4 },
-            { id: 'ESC-8839', counterparty: 'EuroProduce', value: '0.4 BTC', status: 'Disputed', date: 'Oct 22, 2024', risk: 78 },
-            { id: 'ESC-8838', counterparty: 'SinoTrans', value: '3.2 BTC', status: 'Locked', date: 'Oct 21, 2024', risk: 15 },
-            { id: 'ESC-8837', counterparty: 'NordicTrade', value: '1.1 BTC', status: 'Settled', date: 'Oct 20, 2024', risk: 2 },
-        ];
+        console.error('API unavailable, failed to fetch escrows', err);
+        throw err;
     }
 }
 
 export async function settleEscrow(escrowId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to settle escrow');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating settle for:', escrowId);
-        return { id: escrowId, status: 'Settled' };
-    }
+    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to settle escrow');
+    return res.json();
 }
 
 export async function disputeEscrow(escrowId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to dispute escrow');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating dispute for:', escrowId);
-        return { id: escrowId, status: 'Disputed' };
-    }
+    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to dispute escrow');
+    return res.json();
 }
 
 export async function releaseEscrow(escrowId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to release escrow');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating release for:', escrowId);
-        return { id: escrowId, status: 'Released' };
-    }
+    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to release escrow');
+    return res.json();
 }
 
 // ─── Audits ──────────────────────────────────────────────────────
@@ -302,19 +258,13 @@ export async function requestAudit(shipmentId: string) {
 
 // ─── Reports ─────────────────────────────────────────────────────
 export async function generateReport(reportType: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/reports/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({ type: reportType }),
-        });
-        if (!res.ok) throw new Error('Failed to generate report');
-        return res.json();
-    } catch (err) {
-        void err;
-        console.warn('API unavailable, simulating report generation');
-        return { id: `RPT-${Date.now()}`, type: reportType, status: 'Generated', url: '#' };
-    }
+    const res = await authFetch(`${API_BASE_URL}/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ type: reportType }),
+    });
+    if (!res.ok) throw new Error('Failed to generate report');
+    return res.json();
 }
 
 // ─── Settings / Profile ─────────────────────────────────────────
