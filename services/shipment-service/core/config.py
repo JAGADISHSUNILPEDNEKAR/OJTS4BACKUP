@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str | None = None
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str = "origin-shipment-manifests"
+    ML_SERVICE_URL: str = "http://localhost:8004"
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

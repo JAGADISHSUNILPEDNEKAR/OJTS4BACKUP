@@ -45,6 +45,8 @@ async def shutdown_event():
         except Exception:
             pass
 
+import httpx
+
 @app.post("/api/v1/shipments", response_model=ShipmentResponse)
 async def create_shipment(
     farmer_id: str = Form(...), 
@@ -53,10 +55,26 @@ async def create_shipment(
     db: AsyncSession = Depends(get_db),
     # current_user = Depends(RoleChecker(["FARMER", "ADMIN"]))
 ):
-    # Dummy ML pre-check
-    if manifest.filename.endswith(".exe"):
-        raise HTTPException(status_code=400, detail="Invalid manifest format")
-    
+    # 1. Real ML pre-check via HTTP
+    risk_score = None
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"{settings.ML_SERVICE_URL}/api/v1/ml/precheck",
+                json={
+                    "filename": manifest.filename,
+                    "content_type": manifest.content_type or "application/octet-stream",
+                    "destination": destination
+                }
+            )
+            resp.raise_for_status()
+            precheck_result = resp.json()
+            risk_score = precheck_result.get("risk_score")
+            if precheck_result.get("status") == "REJECTED":
+                raise HTTPException(status_code=400, detail=f"Shipment rejected by ML precheck. Risk Score: {risk_score}")
+    except httpx.RequestError as e:
+        print(f"ML Service Precheck request failed: {e}")
+
     shipment_id = uuid.uuid4()
     s3_key = f"manifests/{shipment_id}/{manifest.filename}"
     
@@ -75,6 +93,7 @@ async def create_shipment(
         current_custodian_id=uuid.UUID(farmer_id),
         destination=destination,
         status="CREATED",
+        risk_score=risk_score,
         manifest_url=s3_key
     )
     db.add(new_shipment)
