@@ -1,16 +1,21 @@
-# mobile_app
+# Origin Mobile Application
 
-A new Flutter project.
+This is the Flutter-based mobile application for the Origin platform.
 
-## Getting Started
+## Architectural Parity
+This application is designed to be a functional mirror of the Origin Web Application.
 
-This project is a starting point for a Flutter application.
+### API Integration
+A centralized `OriginApiClient` is located in `lib/core/api_client.dart`. This client provides the necessary networking hooks for:
+- ECDSA-based Custody Handoffs
+- Multi-signature Escrow Management
+- Real-time ML Risk Assessment visualization
 
-A few resources to get you started if this is your first Flutter project:
+### Development Note
+Currently, many screens use UI mocks. To transition to production mode:
+1. Initialize the `OriginApiClient` with your local or staging Gateway URL.
+2. Replace local state builders in individual screens with `FutureBuilder` calls to the `OriginApiClient`.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Environment Setup
+- **API URL**: Set the base URL in `api_client.dart` or via `--dart-define` at build time.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
