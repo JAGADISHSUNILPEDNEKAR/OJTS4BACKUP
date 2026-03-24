@@ -26,7 +26,7 @@ def create_access_token(
         "org_id": str(org_id) if org_id else None,
         "type": "access",
     }
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.PRIVATE_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 def create_refresh_token(
@@ -43,13 +43,13 @@ def create_refresh_token(
         "sub": str(subject),
         "type": "refresh",
     }
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.PRIVATE_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 def decode_token(token: str) -> Optional[dict]:
     """Decode and validate a JWT token. Returns payload dict or None."""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.PUBLIC_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         return None
