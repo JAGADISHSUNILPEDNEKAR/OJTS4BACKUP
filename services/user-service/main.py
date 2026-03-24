@@ -62,6 +62,12 @@ async def update_my_profile(
                 detail="Email already in use by another account",
             )
         current_user.email = updates.email
+        
+    if updates.display_name is not None:
+        current_user.display_name = updates.display_name
+        
+    if updates.preferences is not None:
+        current_user.preferences = updates.preferences
 
     # Role changes are only allowed for ADMINs (self-role-change is blocked)
     if updates.role is not None:

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from config import settings
 from consumer import consume_all_topics
 from reporting import router as reporting_router
+from audits import router as audits_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("audit-reporting")
@@ -31,6 +32,7 @@ app = FastAPI(
 )
 
 app.include_router(reporting_router, prefix="/api/v1/reports")
+app.include_router(audits_router, prefix="/api/v1/audits")
 
 @app.get("/health")
 async def health_check():

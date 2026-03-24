@@ -49,11 +49,13 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
+      - user-service
       - shipment-service
       - iot-ingestion-service
       - ml-service
       - alert-service
       - escrow-service
+      - audit-reporting-service
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -116,6 +118,15 @@ services:
       context: ./services/escrow-service
     ports:
       - "8007:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  audit-reporting-service:
+    build:
+      context: ./services/audit_reporting_service
+    ports:
+      - "8008:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
