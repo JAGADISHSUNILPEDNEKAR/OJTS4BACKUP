@@ -6,10 +6,18 @@ use bitcoin::opcodes::all::*;
 use bitcoin::blockdata::script::Builder;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
+use bitcoin::secp256k1::SecretKey;
+
 #[allow(dead_code)]
-pub struct PsbtService;
+pub struct PsbtService {
+    escrow_agent_key: SecretKey,
+}
 
 impl PsbtService {
+    pub fn new(escrow_agent_key: SecretKey) -> Self {
+        Self { escrow_agent_key }
+    }
+
     #[allow(dead_code)]
     pub fn create_multisig_psbt(&self, shipment_id: &str) -> String {
         log::info!("Creating real 2-of-3 PSBT for shipment {}", shipment_id);
@@ -17,7 +25,7 @@ impl PsbtService {
         let secp = bitcoin::secp256k1::Secp256k1::new();
         let key1 = PublicKey::from_secret_key(&secp, &bitcoin::secp256k1::SecretKey::from_slice(&[1u8; 32]).unwrap());
         let key2 = PublicKey::from_secret_key(&secp, &bitcoin::secp256k1::SecretKey::from_slice(&[2u8; 32]).unwrap());
-        let key3 = PublicKey::from_secret_key(&secp, &bitcoin::secp256k1::SecretKey::from_slice(&[3u8; 32]).unwrap());
+        let key3 = PublicKey::from_secret_key(&secp, &self.escrow_agent_key);
 
         let witness_script = Builder::new()
             .push_opcode(OP_PUSHNUM_2)
@@ -77,7 +85,8 @@ mod tests {
 
     #[test]
     fn test_psbt_flow() {
-        let service = PsbtService;
+        let dummy_key = bitcoin::secp256k1::SecretKey::from_slice(&[4u8; 32]).unwrap();
+        let service = PsbtService::new(dummy_key);
         let psbt_b64 = service.create_multisig_psbt("shipment_123");
         
         let txid = service.finalize_and_broadcast(&psbt_b64).expect("Should parse and broadcast");

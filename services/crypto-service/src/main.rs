@@ -2,6 +2,7 @@ mod anchoring;
 mod kafka;
 mod merkle;
 mod psbt;
+mod vault;
 
 use anchoring::{AnchoringService, MockAnchoringService};
 use bitcoin::hashes::Hash;
@@ -16,11 +17,35 @@ use rdkafka::ClientConfig;
 use rdkafka::Message;
 use serde_json::Value;
 
+use vault::VaultClient;
+use bitcoin::secp256k1::SecretKey;
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
     println!("Origin Crypto Service Starting...");
-    println!("Initializing Merkle Builder and Bitcoin Anchoring worker...");
+    println!("Initializing Vault, Merkle Builder and Bitcoin Anchoring worker...");
+
+    let mut escrow_agent_key = SecretKey::from_slice(&[3u8; 32]).unwrap();
+    if let Some(vault_client) = VaultClient::new() {
+        match vault_client.get_system_keys().await {
+            Ok(hex_key) => {
+                if let Ok(bytes) = hex::decode(&hex_key) {
+                    if let Ok(sk) = SecretKey::from_slice(&bytes) {
+                        log::info!("Successfully loaded Escrow Agent key from Vault");
+                        escrow_agent_key = sk;
+                    } else {
+                        log::error!("Vault key is invalid secp256k1 scalar");
+                    }
+                } else {
+                    log::error!("Vault key is not valid hex");
+                }
+            },
+            Err(e) => log::error!("Failed to fetch key from Vault: {}", e),
+        }
+    } else {
+        log::warn!("Proceeding with mock Escrow Agent key.");
+    }
 
     let rpc_url = env::var("BITCOIN_RPC_URL").unwrap_or_else(|_| "http://localhost:18332".to_string());
     let rpc_user = env::var("BITCOIN_RPC_USER").unwrap_or_else(|_| "admin".to_string());
@@ -164,7 +189,7 @@ async fn main() {
                 }
                 log::info!("Listening for PSBT requests on escrow.psbt.request...");
                 
-                let psbt_service = psbt::PsbtService;
+                let psbt_service = psbt::PsbtService::new(escrow_agent_key);
 
                 loop {
                     match c.recv().await {
