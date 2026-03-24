@@ -11,6 +11,11 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time;
 
+use rdkafka::consumer::{Consumer, StreamConsumer};
+use rdkafka::ClientConfig;
+use rdkafka::Message;
+use serde_json::Value;
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -72,6 +77,60 @@ async fn main() {
                     Err(e) => log::error!("Failed to anchor root: {}", e),
                 }
             }
+        }
+    });
+
+    let kafka_brokers_clone = kafka_brokers.clone();
+    let kafka_publisher_for_psbt = kafka_publisher.clone();
+    
+    // PSBT Generation Kafka Consumer
+    tokio::spawn(async move {
+        let consumer: Result<StreamConsumer, _> = ClientConfig::new()
+            .set("group.id", "crypto-service-group")
+            .set("bootstrap.servers", &kafka_brokers_clone)
+            .set("enable.partition.eof", "false")
+            .set("session.timeout.ms", "6000")
+            .set("enable.auto.commit", "true")
+            .create();
+
+        match consumer {
+            Ok(c) => {
+                if let Err(e) = c.subscribe(&["escrow.psbt.request"]) {
+                    log::error!("Failed to subscribe to escrow.psbt.request: {}", e);
+                    return;
+                }
+                log::info!("Listening for PSBT requests on escrow.psbt.request...");
+                
+                let psbt_service = psbt::PsbtService;
+
+                loop {
+                    match c.recv().await {
+                        Err(e) => log::warn!("Kafka error: {}", e),
+                        Ok(m) => {
+                            if let Some(payload) = m.payload() {
+                                if let Ok(json_str) = std::str::from_utf8(payload) {
+                                    if let Ok(req) = serde_json::from_str::<Value>(json_str) {
+                                        if let Some(shipment_id) = req["shipment_id"].as_str() {
+                                            log::info!("Received PSBT request for shipment: {}", shipment_id);
+                                            let generated_psbt = psbt_service.create_multisig_psbt(shipment_id);
+                                            
+                                            let response = serde_json::json!({
+                                                "status": "PSBT_GENERATED",
+                                                "shipment_id": shipment_id,
+                                                "escrow_id": format!("ESC-{}", shipment_id),
+                                                "psbt": generated_psbt
+                                            });
+                                            
+                                            kafka_publisher_for_psbt.publish("escrow.psbt.response", shipment_id, &response).await;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            Err(e) => log::error!("Could not create Kafka consumer: {}", e),
         }
     });
 
