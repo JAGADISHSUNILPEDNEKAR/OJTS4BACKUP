@@ -1,30 +1,62 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from typing import List, Dict, Any
-from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy import desc
+
+from database import get_db
+from models import AuditLog
 
 router = APIRouter()
 
-MOCK_AUDITS = [
-    { "id": "AUD-1021", "entity": "STR-8812", "type": "Route Compliance", "auditor": "ComplianceBot v2", "status": "Passed", "timestamp": "2024-10-24T14:30:00Z", "findings": 0 },
-    { "id": "AUD-1020", "entity": "ESC-8839", "type": "Financial Reconciliation", "auditor": "Alex Rivera", "status": "Failed", "timestamp": "2024-10-24T12:15:00Z", "findings": 3 },
-    { "id": "AUD-1019", "entity": "STR-8810", "type": "Sensor Calibration", "auditor": "IoT Validator", "status": "Passed", "timestamp": "2024-10-23T18:00:00Z", "findings": 0 },
-    { "id": "AUD-1018", "entity": "STR-7721", "type": "Cold Chain Integrity", "auditor": "Sarah Chen", "status": "Warning", "timestamp": "2024-10-23T09:30:00Z", "findings": 1 },
-    { "id": "AUD-1017", "entity": "ESC-8840", "type": "Settlement Verification", "auditor": "FinOps Bot", "status": "Passed", "timestamp": "2024-10-22T16:45:00Z", "findings": 0 },
-    { "id": "AUD-1016", "entity": "STR-6650", "type": "Geofence Compliance", "auditor": "ComplianceBot v2", "status": "Failed", "timestamp": "2024-10-22T11:20:00Z", "findings": 2 },
-]
-
 @router.get("/", response_model=List[Dict[str, Any]])
-async def fetch_audits():
-    """Returns a list of audits for the dashboard."""
-    return MOCK_AUDITS
+async def fetch_audits(db: AsyncSession = Depends(get_db)):
+    """Returns a list of audits dynamically queried from audit_logs."""
+    # We query important event topics to show in the high-level audit list
+    topics = ["bitcoin.anchored", "merkle.committed", "alert.created", "audit.request.created"]
+    query = select(AuditLog).where(AuditLog.topic.in_(topics)).order_by(desc(AuditLog.recorded_at)).limit(50)
+    
+    result = await db.execute(query)
+    logs = result.scalars().all()
+    
+    audits = []
+    for log in logs:
+        # Map log topics to UI structures
+        findings = 0
+        status = "Passed"
+        
+        if log.topic == "alert.created":
+            status = "Warning" if log.payload.get("severity") != "CRITICAL" else "Failed"
+            findings = 1
+            
+        audits.append({
+            "id": f"AUD-{str(log.id)[:8]}",
+            "entity": log.payload.get("shipment_id", "N/A"),
+            "type": log.topic.replace(".", " ").title(),
+            "auditor": "Origin Engine",
+            "status": status,
+            "timestamp": log.recorded_at.isoformat(),
+            "findings": findings
+        })
+        
+    return audits
 
 from pydantic import BaseModel
 class AuditRequest(BaseModel):
     shipment_id: str
 
 @router.post("/")
-async def request_audit(req: AuditRequest):
-    """Logs a request for a new audit."""
-    new_id = f"AUD-{1022 + len(MOCK_AUDITS) - 6}"
-    # In a real system, this would push a request to Kafka or store in DB
-    return {"status": "AUDIT_REQUESTED", "shipmentId": req.shipment_id, "auditId": new_id}
+async def request_audit(req: AuditRequest, db: AsyncSession = Depends(get_db)):
+    """Logs a real request for a new audit in the audit_logs table."""
+    audit_log = AuditLog(
+        topic="audit.request.created",
+        payload={"shipment_id": req.shipment_id, "requester": "UI-User"}
+    )
+    db.add(audit_log)
+    await db.commit()
+    
+    return {
+        "status": "AUDIT_REQUESTED", 
+        "shipmentId": req.shipment_id, 
+        "auditId": f"AUD-{str(audit_log.id)[:8]}"
+    }
