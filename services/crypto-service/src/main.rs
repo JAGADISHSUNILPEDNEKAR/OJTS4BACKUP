@@ -51,10 +51,13 @@ async fn main() {
     let rpc_user = env::var("BITCOIN_RPC_USER").unwrap_or_else(|_| "admin".to_string());
     let rpc_pass = env::var("BITCOIN_RPC_PASS").unwrap_or_else(|_| "admin".to_string());
 
+    let mut rpc_client_for_psbt = None;
     let anchoring_service: Arc<dyn AnchoringService + Send + Sync> = if let Ok(rpc) = Client::new(&rpc_url, Auth::UserPass(rpc_user, rpc_pass)) {
         if let Ok(info) = rpc.get_blockchain_info() {
             println!("Connected to Bitcoin testnet node: {}", info.chain);
-            Arc::new(anchoring::BitcoinClienWrapper::new(rpc))
+            let rpc_arc = Arc::new(rpc);
+            rpc_client_for_psbt = Some(rpc_arc.clone());
+            Arc::new(anchoring::BitcoinClienWrapper::new(rpc_arc))
         } else {
             println!("Failed to connect to Bitcoin RPC. Using mock service.");
             Arc::new(MockAnchoringService)
@@ -189,7 +192,7 @@ async fn main() {
                 }
                 log::info!("Listening for PSBT requests on escrow.psbt.request...");
                 
-                let psbt_service = psbt::PsbtService::new(escrow_agent_key);
+                let psbt_service = psbt::PsbtService::new(escrow_agent_key, rpc_client_for_psbt);
 
                 loop {
                     match c.recv().await {
@@ -200,16 +203,33 @@ async fn main() {
                                     if let Ok(req) = serde_json::from_str::<Value>(json_str) {
                                         if let Some(shipment_id) = req["shipment_id"].as_str() {
                                             log::info!("Received PSBT request for shipment: {}", shipment_id);
-                                            let generated_psbt = psbt_service.create_multisig_psbt(shipment_id);
                                             
-                                            let response = serde_json::json!({
-                                                "status": "PSBT_GENERATED",
-                                                "shipment_id": shipment_id,
-                                                "escrow_id": format!("ESC-{}", shipment_id),
-                                                "psbt": generated_psbt
-                                            });
+                                            let mut buyer_key = "";
+                                            let mut seller_key = "";
                                             
-                                            kafka_publisher_for_psbt.publish("escrow.psbt.response", shipment_id, &response).await;
+                                            if let Some(participants) = req["participants"].as_array() {
+                                                for p in participants {
+                                                    if p["role"] == "buyer" {
+                                                        buyer_key = p["public_key"].as_str().unwrap_or("");
+                                                    } else if p["role"] == "seller" {
+                                                        seller_key = p["public_key"].as_str().unwrap_or("");
+                                                    }
+                                                }
+                                            }
+
+                                            match psbt_service.create_multisig_psbt(shipment_id, buyer_key, seller_key) {
+                                                Ok(generated_psbt) => {
+                                                    let response = serde_json::json!({
+                                                        "status": "PSBT_GENERATED",
+                                                        "shipment_id": shipment_id,
+                                                        "escrow_id": format!("ESC-{}", shipment_id),
+                                                        "psbt": generated_psbt
+                                                    });
+                                                    
+                                                    kafka_publisher_for_psbt.publish("escrow.psbt.response", shipment_id, &response).await;
+                                                },
+                                                Err(e) => log::error!("Failed to create PSBT: {}", e),
+                                            }
                                         }
                                     }
                                 }

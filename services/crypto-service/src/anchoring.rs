@@ -9,11 +9,11 @@ pub trait AnchoringService {
 
 #[allow(dead_code)]
 pub struct BitcoinClienWrapper {
-    client: Client,
+    client: std::sync::Arc<Client>,
 }
 
 impl BitcoinClienWrapper {
-    pub fn new(client: Client) -> Self {
+    pub fn new(client: std::sync::Arc<Client>) -> Self {
         Self { client }
     }
 }
