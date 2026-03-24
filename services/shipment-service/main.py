@@ -176,6 +176,33 @@ async def list_shipments(
     result = await db.execute(select(Shipment))
     return result.scalars().all()
 
+@app.post("/api/v1/shipments/{shipment_id}/escrow/init")
+async def init_escrow(
+    shipment_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
+    shipment = result.scalars().first()
+    
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+        
+    shipment.status = "ESCROW_PENDING"
+    db.add(shipment)
+    await db.commit()
+    
+    event = {
+        "shipment_id": str(shipment.id),
+        "status": "ESCROW_PENDING"
+    }
+    if producer:
+        try:
+            await producer.send_and_wait("escrow.psbt.request", event)
+        except Exception as e:
+            print(f"Failed to publish to Kafka: {e}")
+            
+    return {"status": "ESCROW_INITIATED", "shipment_id": str(shipment.id)}
+
 @app.get("/api/v1/shipments/{shipment_id}", response_model=ShipmentResponse)
 async def get_shipment(
     shipment_id: str,
