@@ -131,5 +131,15 @@ services:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
+  crypto-service:
+    build:
+      context: ./services/crypto-service
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      # --- Crypto Service (Mainnet configuration) ---
+      - BITCOIN_RPC_URL=http://production.bitcoincore.internal:8332
+      - BITCOIN_RPC_USER=admin_mainnet
+      - BITCOIN_RPC_PASS=secure_mainnet_rpc_password
+
 volumes:
   pgdata:
