@@ -1,10 +1,12 @@
 import asyncio
 import logging
 from typing import List
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results, get_recent_alerts
 from core.database import engine, Base, AsyncSessionLocal
+from core.dependencies import get_current_user_from_token
+from schemas import CurrentUser
 from models import AlertThreshold
 from sqlalchemy.future import select
 
@@ -55,7 +57,9 @@ async def shutdown_event():
     await stop_kafka_producer()
 
 @app.get("/api/v1/alerts", response_model=List[Alert])
-async def get_alerts_api():
+async def get_alerts_api(
+    current_user: CurrentUser = Depends(get_current_user_from_token)
+):
     return get_recent_alerts()
 
 @app.get("/health")

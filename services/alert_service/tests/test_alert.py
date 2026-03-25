@@ -1,6 +1,15 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from main import app
+from core.dependencies import get_current_user_from_token
+from schemas import CurrentUser
+import uuid
+
+async def override_current_user():
+    return CurrentUser(id=str(uuid.uuid4()), role="ADMIN")
+
+app.dependency_overrides[get_current_user_from_token] = override_current_user
+
 from evaluator.threshold import evaluate
 
 @pytest.mark.asyncio
