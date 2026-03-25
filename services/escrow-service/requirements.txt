@@ -7,3 +7,6 @@ pydantic-settings
 python-dotenv
 aiokafka
 psycopg2-binary
+PyJWT
+cryptography
+ecdsa

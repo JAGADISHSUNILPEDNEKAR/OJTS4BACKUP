@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 from pydantic import BaseModel
 from escrow import process_fund_hold, PSBTTriggerRequest, SIGNATURE_STORE, THRESHOLD, finalize_escrow
+from core.dependencies import get_current_user_from_token
+from schemas import CurrentUser
 
 router = APIRouter()
 logger = logging.getLogger("escrow-service.api")
@@ -12,17 +14,29 @@ class PSBTSignRequest(BaseModel):
     signature_hash: str
 
 @router.post("/dispute")
-async def flag_dispute(shipment_id: str):
+async def flag_dispute(
+    shipment_id: str,
+    current_user: CurrentUser = Depends(get_current_user_from_token)
+):
     logger.info(f"Flagging dispute for shipment {shipment_id}")
     # Updates DB
     return {"status": "DISPUTED", "shipment_id": shipment_id}
 
 @router.post("/psbt/trigger")
-async def trigger_psbt_flow(request: PSBTTriggerRequest):
+async def trigger_psbt_flow(
+    request: PSBTTriggerRequest,
+    current_user: CurrentUser = Depends(get_current_user_from_token)
+):
     return await process_fund_hold(request)
 
 @router.post("/psbt/sign")
-async def sign_psbt(request: PSBTSignRequest):
+async def sign_psbt(
+    request: PSBTSignRequest,
+    current_user: CurrentUser = Depends(get_current_user_from_token)
+):
+    if request.participant_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot sign for another participant")
+        
     shipment_id = request.shipment_id
     
     if shipment_id not in SIGNATURE_STORE:
