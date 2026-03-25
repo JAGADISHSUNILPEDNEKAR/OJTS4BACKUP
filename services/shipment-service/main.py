@@ -9,9 +9,9 @@ from sqlalchemy.orm import selectinload
 from aiokafka import AIOKafkaProducer
 from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 
-from database import engine, get_db, Base
+from database import engine, get_db, AsyncSessionLocal, Base
 from models import Shipment, CustodyEvent
-from schemas import CustodyHandoff, ShipmentResponse
+from schemas import CustodyHandoff, ShipmentResponse, CurrentUser
 from core.dependencies import get_current_user_from_token, RoleChecker
 from core.config import settings
 from core.s3_utils import upload_to_s3
@@ -47,6 +47,22 @@ async def shutdown_event():
         except Exception:
             pass
 
+async def get_db_with_rls(
+    current_user: CurrentUser = Depends(get_current_user_from_token)
+):
+    """
+    Dependency that yields a database session with the app.current_user_id 
+    session variable set for PostgreSQL RLS.
+    """
+    from sqlalchemy import text
+    async with AsyncSessionLocal() as session:
+        # Set the session-level variable for RLS
+        await session.execute(
+            text("SELECT set_config('app.current_user_id', :user_id, true)"),
+            {"user_id": str(current_user.id)}
+        )
+        yield session
+
 import httpx
 
 @app.post("/api/v1/shipments", response_model=ShipmentResponse)
@@ -54,8 +70,8 @@ async def create_shipment(
     farmer_id: str = Form(...), 
     destination: str = Form(...), 
     manifest: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
-    # current_user = Depends(RoleChecker(["FARMER", "ADMIN"]))
+    current_user: CurrentUser = Depends(RoleChecker(["FARMER", "ADMIN"])),
+    db: AsyncSession = Depends(get_db_with_rls),
 ):
     # 1. Real ML pre-check via HTTP
     risk_score = None
@@ -121,7 +137,7 @@ async def create_shipment(
 async def custody_handoff(
     shipment_id: str, 
     handoff: CustodyHandoff,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_with_rls)
 ):
     # 0. Fetch shipment
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
@@ -174,7 +190,7 @@ async def custody_handoff(
 @app.get("/api/v1/shipments/{shipment_id}/proof/pdf", response_class=Response)
 async def download_proof_pdf(
     shipment_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(
         select(Shipment)
@@ -197,7 +213,7 @@ async def download_proof_pdf(
 @app.get("/api/v1/shipments/{shipment_id}/risk")
 async def get_shipment_risk(
     shipment_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
     shipment = result.scalars().first()
@@ -229,7 +245,7 @@ async def get_shipment_risk(
 
 @app.get("/api/v1/shipments", response_model=list[ShipmentResponse])
 async def list_shipments(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment))
     return result.scalars().all()
@@ -237,7 +253,7 @@ async def list_shipments(
 @app.post("/api/v1/shipments/{shipment_id}/escrow/init")
 async def init_escrow(
     shipment_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
     shipment = result.scalars().first()
@@ -264,7 +280,7 @@ async def init_escrow(
 @app.get("/api/v1/shipments/{shipment_id}", response_model=ShipmentResponse)
 async def get_shipment(
     shipment_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
     shipment = result.scalars().first()

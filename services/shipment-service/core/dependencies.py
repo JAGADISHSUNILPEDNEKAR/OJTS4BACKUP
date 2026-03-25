@@ -12,7 +12,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login
 async def get_current_user_from_token(token: str = Depends(oauth2_scheme)) -> CurrentUser:
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token, settings.PUBLIC_KEY, algorithms=[settings.ALGORITHM]
         )
         token_data = TokenData(
             id=payload.get("sub"),

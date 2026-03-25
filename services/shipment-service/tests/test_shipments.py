@@ -11,9 +11,11 @@ from fastapi import status
 from ecdsa import SigningKey, NIST256p
 import io
 
-from main import app
+from main import app, get_db_with_rls
 from database import get_db
 from models import Shipment
+from core.dependencies import get_current_user_from_token
+from schemas import CurrentUser
 
 MOCK_SHIPMENT_ID = uuid.uuid4()
 MOCK_FARMER_ID = uuid.uuid4()
@@ -29,6 +31,8 @@ class MockResult:
         class Scalars:
             def first(self_inner):
                 return self.shipment
+            def all(self_inner):
+                return [self.shipment]
         return Scalars()
 
 class MockSession:
@@ -44,6 +48,10 @@ class MockSession:
         obj.created_at = datetime.utcnow()
         obj.updated_at = datetime.utcnow()
     async def execute(self, *args, **kwargs):
+        # Handle RLS set_config calls
+        if "set_config" in str(args[0]):
+            return None
+            
         shipment = Shipment(
             id=MOCK_SHIPMENT_ID,
             farmer_id=MOCK_FARMER_ID,
@@ -53,11 +61,25 @@ class MockSession:
             manifest_url="manifests/abc/def.pdf"
         )
         return MockResult(shipment)
+    async def close(self):
+        pass
+    async def __aenter__(self):
+        return self
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
 
 async def override_get_db():
     yield MockSession()
 
+async def override_get_db_with_rls():
+    yield MockSession()
+
+async def override_current_user():
+    return CurrentUser(id=str(MOCK_FARMER_ID), role="FARMER", organization_id=str(uuid.uuid4()))
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[get_db_with_rls] = override_get_db_with_rls
+app.dependency_overrides[get_current_user_from_token] = override_current_user
 
 # Patch the upload_to_s3 function during tests
 from unittest.mock import patch
@@ -98,5 +120,7 @@ async def test_custody_handoff_success():
                 "public_key": public_key_hex
             }
         )
+    if response.status_code != status.HTTP_200_OK:
+        print(f"DEBUG: 422 Response Body: {response.text}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["status"] == "HANDOFF_VERIFIED"
