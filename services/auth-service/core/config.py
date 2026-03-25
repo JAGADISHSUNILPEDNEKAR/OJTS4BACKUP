@@ -56,4 +56,16 @@ vwIDAQAB
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    async def load_vault_keys(self):
+        """Try to load RSA keys from Vault, overriding defaults."""
+        from core.vault import VaultClient
+        vault = VaultClient()
+        if vault.enabled:
+            priv, pub = await vault.get_jwt_keys()
+            if priv and pub:
+                self.PRIVATE_KEY = priv
+                self.PUBLIC_KEY = pub
+                return True
+        return False
+
 settings = Settings()

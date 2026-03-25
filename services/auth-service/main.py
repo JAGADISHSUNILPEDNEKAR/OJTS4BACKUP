@@ -44,6 +44,12 @@ async def get_redis():
 
 @app.on_event("startup")
 async def startup_event():
+    # Load keys from Vault if available
+    if await settings.load_vault_keys():
+         print("Successfully loaded JWT signing keys from Vault.")
+    else:
+         print("Using default hardcoded JWT signing keys.")
+
     # Auto-create tables in dev (Alembic handles this in prod)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
