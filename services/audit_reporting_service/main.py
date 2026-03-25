@@ -1,12 +1,16 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import settings
+from core.config import settings
+from core.dependencies import get_current_user_from_token
 from consumer import consume_all_topics
 from reporting import router as reporting_router
 from audits import router as audits_router
+from database import engine, AsyncSessionLocal, Base
+from schemas import CurrentUser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("audit-reporting")
@@ -25,6 +29,22 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     task.cancel()
+
+async def get_db_with_rls(
+    current_user: CurrentUser = Depends(get_current_user_from_token)
+):
+    """
+    Dependency that yields a database session with the app.current_user_id 
+    session variable set for PostgreSQL RLS.
+    """
+    from sqlalchemy import text
+    async with AsyncSessionLocal() as session:
+        # Set the session-level variable for RLS
+        await session.execute(
+            text("SELECT set_config('app.current_user_id', :user_id, true)"),
+            {"user_id": str(current_user.id)}
+        )
+        yield session
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

@@ -2,7 +2,7 @@ import json
 import logging
 from aiokafka import AIOKafkaConsumer
 
-from config import settings
+from core.config import settings
 from database import AsyncSessionLocal
 from models import AuditLog
 

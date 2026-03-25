@@ -11,8 +11,10 @@ from httpx import AsyncClient, ASGITransport
 from datetime import datetime
 
 from main import app
+from core.dependencies import get_current_user_from_token, get_db_with_rls
 from database import get_db
 from models import AuditLog
+from schemas import CurrentUser
 from reporting import s3_client
 
 MOCK_SHIPMENT_ID = "shp_12345"
@@ -56,7 +58,15 @@ class MockSession:
 async def override_get_db():
     yield MockSession()
 
+async def override_get_db_with_rls():
+    yield MockSession()
+
+async def override_current_user():
+    return CurrentUser(id=str(uuid.uuid4()), role="ADMIN")
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[get_db_with_rls] = override_get_db_with_rls
+app.dependency_overrides[get_current_user_from_token] = override_current_user
 
 @pytest.mark.asyncio
 async def test_generate_pdf_proof():
@@ -64,7 +74,5 @@ async def test_generate_pdf_proof():
         response = await ac.get(f"/api/v1/reports/shipment/{MOCK_SHIPMENT_ID}/proof")
     
     assert response.status_code == 200
-    data = response.json()
-    assert "proof_url" in data
-    assert MOCK_SHIPMENT_ID in data["proof_url"]
-    assert "pdf" in data["proof_url"]
+    assert response.headers["content-type"] == "application/pdf"
+    assert len(response.content) > 0

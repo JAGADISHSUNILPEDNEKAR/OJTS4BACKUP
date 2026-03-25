@@ -4,13 +4,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
 
-from database import get_db
+from core.dependencies import get_current_user_from_token, get_db_with_rls
 from models import AuditLog
+from schemas import CurrentUser
 
 router = APIRouter()
 
 @router.get("/", response_model=List[Dict[str, Any]])
-async def fetch_audits(db: AsyncSession = Depends(get_db)):
+async def fetch_audits(
+    current_user: CurrentUser = Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db_with_rls)
+):
     """Returns a list of audits dynamically queried from audit_logs."""
     # We query important event topics to show in the high-level audit list
     topics = ["bitcoin.anchored", "merkle.committed", "alert.created", "audit.request.created"]
@@ -46,7 +50,11 @@ class AuditRequest(BaseModel):
     shipment_id: str
 
 @router.post("/")
-async def request_audit(req: AuditRequest, db: AsyncSession = Depends(get_db)):
+async def request_audit(
+    req: AuditRequest, 
+    current_user: CurrentUser = Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db_with_rls)
+):
     """Logs a real request for a new audit in the audit_logs table."""
     audit_log = AuditLog(
         topic="audit.request.created",

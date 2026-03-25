@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import String, desc
 
-from config import settings
-from database import get_db
+from core.config import settings
+from core.dependencies import get_current_user_from_token, get_db_with_rls
 from models import AuditLog
+from schemas import CurrentUser
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -28,7 +29,11 @@ class ReportRequest(BaseModel):
     type: str # 'PDF' or 'CSV'
 
 @router.post("/generate")
-async def generate_summary_report(req: ReportRequest, db: AsyncSession = Depends(get_db)):
+async def generate_summary_report(
+    req: ReportRequest, 
+    current_user: CurrentUser = Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db_with_rls)
+):
     """Generates a summary report of all recent audit logs."""
     query = select(AuditLog).order_by(desc(AuditLog.recorded_at)).limit(100)
     result = await db.execute(query)
@@ -67,7 +72,11 @@ async def generate_summary_report(req: ReportRequest, db: AsyncSession = Depends
     )
 
 @router.get("/shipment/{shipment_id}/proof")
-async def generate_pdf_proof(shipment_id: str, db: AsyncSession = Depends(get_db)):
+async def generate_pdf_proof(
+    shipment_id: str, 
+    current_user: CurrentUser = Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db_with_rls)
+):
     logger.info(f"Generating PDF proof for shipment {shipment_id}")
 
     query = select(AuditLog).where(
