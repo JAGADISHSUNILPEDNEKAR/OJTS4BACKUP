@@ -9,7 +9,7 @@ import uuid
 from fastapi import status
 from datetime import datetime, timezone
 
-from main import app
+from main import app, get_db_with_rls
 from database import get_db
 from models import User
 from core.dependencies import get_current_user_from_token, RoleChecker
@@ -57,6 +57,9 @@ class MockSession:
 async def override_get_db():
     yield MockSession()
 
+async def override_get_db_with_rls():
+    yield MockSession()
+
 async def override_get_current_user():
     return User(
         id=MOCK_USER_ID,
@@ -72,6 +75,7 @@ async def override_get_current_user():
 @pytest.mark.asyncio
 async def test_get_my_profile():
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db_with_rls] = override_get_db_with_rls
     app.dependency_overrides[get_current_user_from_token] = override_get_current_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/api/v1/users/me")
@@ -82,6 +86,7 @@ async def test_get_my_profile():
 @pytest.mark.asyncio
 async def test_update_my_profile_success():
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db_with_rls] = override_get_db_with_rls
     app.dependency_overrides[get_current_user_from_token] = override_get_current_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.put(

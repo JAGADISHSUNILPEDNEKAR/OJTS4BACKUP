@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy import func
 from aiokafka import AIOKafkaProducer
 
-from database import engine, get_db, Base
+from database import engine, get_db, AsyncSessionLocal, Base
 from models import User, Organization
 from schemas import UserResponse, UserUpdate
 from core.dependencies import get_current_user_from_token, RoleChecker
@@ -29,14 +29,24 @@ async def startup_event():
     except Exception as e:
         print(f"Warning: Kafka could not connect. {e}")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    global producer
-    if producer:
-        try:
-            await producer.stop()
-        except Exception:
-            pass
+    # Shutdown
+    task.cancel()
+
+async def get_db_with_rls(
+    current_user: User = Depends(get_current_user_from_token)
+):
+    """
+    Dependency that yields a database session with the app.current_user_id 
+    session variable set for PostgreSQL RLS.
+    """
+    from sqlalchemy import text
+    async with AsyncSessionLocal() as session:
+        # Set the session-level variable for RLS
+        await session.execute(
+            text("SELECT set_config('app.current_user_id', :user_id, true)"),
+            {"user_id": str(current_user.id)}
+        )
+        yield session
 
 @app.get("/api/v1/users/me", response_model=UserResponse)
 async def get_my_profile(
@@ -88,7 +98,7 @@ async def update_my_profile(
 async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
     current_user: User = Depends(RoleChecker(["ADMIN", "SUPERADMIN"])),
 ):
     """List all users (admin only, paginated)."""
@@ -100,7 +110,7 @@ async def list_users(
 @app.get("/api/v1/users/{id}", response_model=UserResponse)
 async def get_user_by_id(
     id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
     current_user: User = Depends(RoleChecker(["ADMIN", "SUPERADMIN"]))
 ):
     result = await db.execute(select(User).where(User.id == id))

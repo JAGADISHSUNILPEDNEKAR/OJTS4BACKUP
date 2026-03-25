@@ -8,4 +8,5 @@ python-dotenv
 psycopg2-binary
 email-validator
 PyJWT
+cryptography
 aiokafka
