@@ -57,15 +57,25 @@ resource "aws_elasticache_replication_group" "redis" {
 # TimescaleDB M5 representation (could also be provisioned on self-hosted EC2/EKS if Timescale Cloud isn't used)
 # A TimescaleDB instance is defined here as an RDS postgres instance as a placeholder. In a production scenario
 # you may use timescaledb provider or similar.
+# AWS Secrets Manager Secret for TimescaleDB
+resource "aws_secretsmanager_secret" "timescaledb_password" {
+  name        = "origin-${var.environment}-timescaledb-password"
+  description = "TimescaleDB Master Password"
+}
+
+resource "aws_secretsmanager_secret_version" "timescaledb_password" {
+  secret_id     = aws_secretsmanager_secret.timescaledb_password.id
+  secret_string = "REPLACE_WITH_SECURE_PASSWORD" # In production, set via CLI or Console
+}
+
 resource "aws_db_instance" "timescaledb" {
-  # ... placeholder for Timescale deployment
   identifier          = "origin-${var.environment}-timescaledb"
   engine              = "postgres"
   instance_class      = "db.m5.large"
   allocated_storage   = 100
   username            = "tsdb_admin"
-  password            = "temp_password_change_me" # Example, should use SecretsManager
-  skip_final_snapshot = true
+  password            = aws_secretsmanager_secret_version.timescaledb_password.secret_string
+  skip_final_snapshot = var.environment == "prod" ? false : true
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   db_subnet_group_name   = module.db.db_subnet_group_name
 }
