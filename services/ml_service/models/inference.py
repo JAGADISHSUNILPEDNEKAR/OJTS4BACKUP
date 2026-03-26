@@ -84,6 +84,28 @@ class InferenceEngine:
         return float(risk_score)
 
     def predict_precheck(self, filename: str, destination: str) -> float:
-        return self.precheck_model.assess_risk(filename, destination)
+        rule_score = self.precheck_model.assess_risk(filename, destination)
+        
+        if self.ready and self.model is not None:
+            # Use proxy features (normalized) to incorporate the IsolationForest model's opinion
+            # Mapping request properties to the model's [temp, humidity] space as a hybrid check
+            # Historical 'normal' is ~ [4.0, 60.0]
+            proxy_features = np.array([[
+                float(len(filename) % 30),     # Dynamic feature 1
+                float(len(destination) % 100)  # Dynamic feature 2
+            ]])
+            
+            try:
+                # Lower score_samples = more anomalous
+                raw_score = self.model.score_samples(proxy_features)[0]
+                ml_risk = min(max((abs(raw_score) - 0.4) / 0.3, 0.0), 1.0) * 100.0
+                
+                # Hybrid score: 70% Rules, 30% ML
+                return float(min(100.0, (rule_score * 0.7) + (ml_risk * 0.3)))
+            except Exception as e:
+                logger.error(f"Error in ML precheck hybrid inference: {e}")
+                return rule_score
+        
+        return rule_score
 
 inference_engine = InferenceEngine()
