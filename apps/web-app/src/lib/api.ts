@@ -4,6 +4,31 @@
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/v1';
+const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || true; // Default to true if backend is unreachable
+
+// ─── Mock Data ───────────────────────────────────────────────────
+const MOCK_SHIPMENTS: Shipment[] = [
+    { id: 'SHP-7721-09', origin: 'Mombasa, KE', destination: 'Rotterdam, NL', farmer_id: 'F-882', status: 'IN_TRANSIT', risk_score: 0.12 },
+    { id: 'SHP-8812-44', origin: 'Santos, BR', destination: 'Shanghai, CN', farmer_id: 'F-102', status: 'CREATED', risk_score: 0.05 },
+    { id: 'SHP-9903-12', origin: 'Ho Chi Minh, VN', destination: 'Los Angeles, US', farmer_id: 'F-441', status: 'DELAYED', risk_score: 0.88 },
+    { id: 'SHP-1120-55', origin: 'Abidjan, CI', destination: 'Hamburg, DE', farmer_id: 'F-309', status: 'ARRIVED', risk_score: 0.02 },
+];
+
+const MOCK_ALERTS: Alert[] = [
+    { id: 'ALT-001', shipment_id: 'SHP-9903-12', severity: 'CRITICAL', type: 'TEMPERATURE_ANOMALY', timestamp: new Date().toISOString(), status: 'OPEN', message: 'Temperature exceeded threshold (12°C)' },
+    { id: 'ALT-002', shipment_id: 'SHP-7721-09', severity: 'WARNING', type: 'ROUTE_DEVIATION', timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'OPEN', message: 'Vessel off course by 12 nautical miles' },
+];
+
+const MOCK_ESCROWS = [
+    { id: 'ESC-441', shipment_id: 'SHP-7721-09', amount: '1.25 BTC', status: 'HELD', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
+    { id: 'ESC-882', shipment_id: 'SHP-8812-44', amount: '0.88 BTC', status: 'RELEASED', address: 'bc1p5d8l0v38z0aadcsas39q278f8v9k6p5f1b1c' },
+];
+
+const MOCK_AUDITS = [
+    { id: 'AUD-101', shipment_id: 'SHP-1120-55', status: 'VERIFIED', proof_hash: '0x7e8c9d...f0a1', timestamp: new Date().toISOString() },
+    { id: 'AUD-102', shipment_id: 'SHP-7721-09', status: 'PENDING', proof_hash: null, timestamp: new Date().toISOString() },
+];
+
 
 // ─── Auth Helpers ────────────────────────────────────────────────
 export function getAuthToken(): string | null {
