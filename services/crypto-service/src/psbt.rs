@@ -13,11 +13,16 @@ use bitcoin::secp256k1::SecretKey;
 pub struct PsbtService {
     escrow_agent_key: SecretKey,
     rpc_client: Option<std::sync::Arc<bitcoincore_rpc::Client>>,
+    last_anchor_txid: std::sync::Arc<std::sync::RwLock<Option<Txid>>>,
 }
 
 impl PsbtService {
-    pub fn new(escrow_agent_key: SecretKey, rpc_client: Option<std::sync::Arc<bitcoincore_rpc::Client>>) -> Self {
-        Self { escrow_agent_key, rpc_client }
+    pub fn new(
+        escrow_agent_key: SecretKey, 
+        rpc_client: Option<std::sync::Arc<bitcoincore_rpc::Client>>,
+        last_anchor_txid: std::sync::Arc<std::sync::RwLock<Option<Txid>>>
+    ) -> Self {
+        Self { escrow_agent_key, rpc_client, last_anchor_txid }
     }
 
     pub fn fetch_unspent_utxo(&self) -> Result<(Txid, u32, u64), String> {
@@ -25,13 +30,24 @@ impl PsbtService {
             let unspent = rpc.list_unspent(None, None, None, None, None)
                 .map_err(|e| format!("Bitcoin RPC listunspent error: {}", e))?;
             
+            // Priority 1: Check if our last anchored TX has an unspent output (change)
+            let last_anchor = self.last_anchor_txid.read().unwrap().clone();
+            if let Some(anchor_txid) = last_anchor {
+                if let Some(utxo) = unspent.iter().find(|u| u.txid == anchor_txid) {
+                    log::info!("Wiring success: Using UTXO from last Merkle anchor {}", anchor_txid);
+                    return Ok((utxo.txid, utxo.vout, utxo.amount.to_sat()));
+                }
+            }
+
+            // Priority 2: Use any available unspent UTXO
             if let Some(utxo) = unspent.first() {
                 Ok((utxo.txid, utxo.vout, utxo.amount.to_sat()))
             } else {
-                Err("No unspent UTXOs found in the Bitcoin node wallet.".to_string())
+                Err("No unspent UTXOs found in the Bitcoin node wallet. Cannot create PSBT without funds.".to_string())
             }
         } else {
             // Mock UTXO for tests if RPC is missing
+            log::warn!("Using mock UTXO (all_zeros) for PSBT - only appropriate for testing environments.");
             Ok((Txid::all_zeros(), 0, 100_000))
         }
     }
@@ -66,8 +82,8 @@ impl PsbtService {
             .push_opcode(OP_CHECKMULTISIG)
             .into_script();
 
-        // Use a real UTXO if available, otherwise fallback (for tests)
-        let (txid, vout, input_amount) = self.fetch_unspent_utxo().unwrap_or((Txid::all_zeros(), 0, 100_000));
+        // Complete wiring: Fetch real UTXO, following the Merkle anchor if possible
+        let (txid, vout, input_amount) = self.fetch_unspent_utxo()?;
         
         let outpoint = OutPoint { txid, vout };
         let txin = TxIn {
@@ -138,8 +154,9 @@ mod tests {
     #[test]
     fn test_psbt_flow() {
         let dummy_key = bitcoin::secp256k1::SecretKey::from_slice(&[4u8; 32]).unwrap();
-        let service = PsbtService::new(dummy_key, None);
-        let psbt_b64 = service.create_multisig_psbt("shipment_123", "mock_buyer", "mock_seller").expect("Should create PSBT");
+        let last_anchor = std::sync::Arc::new(std::sync::RwLock::new(None));
+        let service = PsbtService::new(dummy_key, None, last_anchor);
+        let psbt_b64 = service.create_multisig_psbt("shipment_123", "mock_buyer", "mock_seller", 1000).expect("Should create PSBT");
         
         let txid = service.finalize_and_broadcast(&psbt_b64).expect("Should parse and broadcast");
         assert!(!txid.is_empty());

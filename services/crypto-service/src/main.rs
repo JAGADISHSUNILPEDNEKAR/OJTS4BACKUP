@@ -74,6 +74,11 @@ async fn main() {
     let anchoring_service_clone = anchoring_service.clone();
     let kafka_publisher_clone = kafka_publisher.clone();
     
+    // Shared state for "wiring" between anchoring and PSBT discovery
+    let last_anchor_txid = Arc::new(std::sync::RwLock::new(None));
+    let last_anchor_txid_for_job = last_anchor_txid.clone();
+    let last_anchor_txid_for_psbt = last_anchor_txid.clone();
+
     tokio::spawn(async move {
         let mut interval = time::interval(Duration::from_secs(600));
         loop {
@@ -156,6 +161,12 @@ async fn main() {
                     Ok(txid) => {
                         log::info!("Anchored Merkle root {} with txid {}", root_hex, txid);
                         
+                        // Wire it: Update last_anchor_txid so PsbtService can prioritize it
+                        if let Ok(parsed_txid) = txid.parse::<bitcoin::Txid>() {
+                            let mut last = last_anchor_txid_for_job.write().unwrap();
+                            *last = Some(parsed_txid);
+                        }
+
                         let event = serde_json::json!({
                             "root": root_hex,
                             "txid": txid,
@@ -192,7 +203,7 @@ async fn main() {
                 }
                 log::info!("Listening for PSBT requests on escrow.psbt.request...");
                 
-                let psbt_service = psbt::PsbtService::new(escrow_agent_key, rpc_client_for_psbt);
+                let psbt_service = psbt::PsbtService::new(escrow_agent_key, rpc_client_for_psbt, last_anchor_txid_for_psbt);
 
                 loop {
                     match c.recv().await {
