@@ -45,3 +45,10 @@ class CurrentUser(BaseModel):
     role: str
     organization_id: Optional[str] = None
 
+class EscrowInitRequest(BaseModel):
+    buyer_id: str
+    buyer_pubkey: str
+    seller_pubkey: str
+    amount_usd: float
+    amount_btc: float
+

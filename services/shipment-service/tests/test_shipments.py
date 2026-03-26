@@ -124,3 +124,20 @@ async def test_custody_handoff_success():
         print(f"DEBUG: 422 Response Body: {response.text}")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["status"] == "HANDOFF_VERIFIED"
+
+@pytest.mark.asyncio
+async def test_init_escrow_success():
+    import httpx
+    async with AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/v1/shipments/{MOCK_SHIPMENT_ID}/escrow/init",
+            json={
+                "buyer_id": str(uuid.uuid4()),
+                "buyer_pubkey": "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352",
+                "seller_pubkey": "03b01a1c93a9d4a6f23f5b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+                "amount_usd": 500.0,
+                "amount_btc": 0.005
+            }
+        )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["status"] == "ESCROW_INITIATED"

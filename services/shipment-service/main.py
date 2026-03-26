@@ -11,7 +11,7 @@ from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 
 from database import engine, get_db, AsyncSessionLocal, Base
 from models import Shipment, CustodyEvent
-from schemas import CustodyHandoff, ShipmentResponse, CurrentUser
+from schemas import CustodyHandoff, ShipmentResponse, CurrentUser, EscrowInitRequest
 from core.dependencies import get_current_user_from_token, RoleChecker
 from core.config import settings
 from core.s3_utils import upload_to_s3
@@ -253,6 +253,7 @@ async def list_shipments(
 @app.post("/api/v1/shipments/{shipment_id}/escrow/init")
 async def init_escrow(
     shipment_id: str,
+    request: EscrowInitRequest,
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
@@ -265,12 +266,22 @@ async def init_escrow(
     db.add(shipment)
     await db.commit()
     
+    # Matching the PSBTTriggerRequest expected by escrow-service and crypto-service
     event = {
         "shipment_id": str(shipment.id),
+        "amount_usd": request.amount_usd,
+        "amount_btc": request.amount_btc,
+        "buyer_id": request.buyer_id,
+        "seller_id": str(shipment.farmer_id),
+        "buyer_pubkey": request.buyer_pubkey,
+        "seller_pubkey": request.seller_pubkey,
+        "required_signatures": 2,
         "status": "ESCROW_PENDING"
     }
+    
     if producer:
         try:
+            # We publish to escrow.psbt.request which both escrow and crypto services can see
             await producer.send_and_wait("escrow.psbt.request", event)
         except Exception as e:
             print(f"Failed to publish to Kafka: {e}")
