@@ -54,7 +54,7 @@ async def test_ingest_telemetry_success():
         response = await ac.post(
             "/api/v1/iot/ingest",
             content=body_bytes,
-            headers={"X-Device-Signature": signature, "Content-Type": "application/json"}
+            headers={"X-Device-Signature": signature, "X-Device-Id": MOCK_DEVICE_ID, "Content-Type": "application/json"}
         )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["status"] == "INGESTED"
@@ -82,6 +82,6 @@ async def test_ingest_telemetry_invalid_hmac():
         response = await ac.post(
             "/api/v1/iot/ingest",
             content=body_bytes,
-            headers={"X-Device-Signature": "invalid-signature", "Content-Type": "application/json"}
+            headers={"X-Device-Signature": "invalid-signature", "X-Device-Id": MOCK_DEVICE_ID, "Content-Type": "application/json"}
         )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED

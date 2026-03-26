@@ -11,12 +11,13 @@ from aiokafka import AIOKafkaProducer
 from database import engine, get_db, Base
 from models import SensorReading
 from schemas import BulkTelemetryUpload
-from core.config import settings
+from core.vault import VaultClient
 
 app = FastAPI(title="Origin IoT Ingestion Service")
 logging.basicConfig(level=logging.INFO)
 
 producer: AIOKafkaProducer = None
+vault = VaultClient()
 
 @app.on_event("startup")
 async def startup_event():
@@ -44,11 +45,25 @@ async def shutdown_event():
 
 async def verify_hmac(request: Request):
     signature = request.headers.get("X-Device-Signature")
+    device_id = request.headers.get("X-Device-Id")
+    
     if not signature:
         raise HTTPException(status_code=401, detail="Missing signature")
+    if not device_id:
+        raise HTTPException(status_code=401, detail="Missing X-Device-Id header")
+        
     body = await request.body()
-    # Mock hardcoded device secret
-    expected = hmac.new(b"mock-device-secret", body, hashlib.sha256).hexdigest()
+    
+    # Fetch real secret from Vault
+    secret = await vault.get_device_secret(device_id)
+    if not secret:
+        # Fallback to mock only if Vault is disabled or in dev mode
+        if not vault.enabled:
+             secret = "mock-device-secret"
+        else:
+             raise HTTPException(status_code=401, detail="Device secret not found in Vault")
+             
+    expected = hmac.new(secret.encode('utf-8') if isinstance(secret, str) else secret, body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature, expected):
          raise HTTPException(status_code=401, detail="Invalid HMAC signature")
     return True
