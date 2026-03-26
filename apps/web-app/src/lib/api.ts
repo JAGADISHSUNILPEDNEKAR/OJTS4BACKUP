@@ -70,7 +70,15 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
         ...getAuthHeaders(),
         ...(options.headers || {}),
     };
-    return fetch(url, { ...options, headers });
+    try {
+        return await fetch(url, { ...options, headers });
+    } catch (err) {
+        // Intercept network errors (like "Failed to fetch")
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+            console.warn(`[API] Connection failed to ${url}. Falling back to mock data if available.`);
+        }
+        throw err;
+    }
 }
 
 // ─── Auth Endpoints ──────────────────────────────────────────────
@@ -160,8 +168,9 @@ export async function fetchShipments(): Promise<Shipment[]> {
     try {
         const res = await authFetch(`${API_BASE_URL}/shipments`);
         if (!res.ok) throw new Error('Failed to fetch shipments');
-        return res.json();
+        return await res.json();
     } catch (err) {
+        if (MOCK_MODE) return MOCK_SHIPMENTS;
         console.error('API connection failed', err);
         return [];
     }
@@ -184,8 +193,12 @@ export async function createShipment(data: Record<string, unknown>) {
             body: formData,
         });
         if (!res.ok) throw new Error('Failed to create shipment');
-        return res.json();
+        return await res.json();
     } catch (err) {
+        if (MOCK_MODE) {
+            const newShipment = { id: `MOCK-${Math.floor(Math.random() * 1000)}`, ...data, status: 'CREATED', risk_score: 0.1 } as Shipment;
+            return newShipment;
+        }
         console.error('Failed to create shipment', err);
         throw err;
     }
@@ -205,33 +218,49 @@ export async function fetchAlerts(): Promise<Alert[]> {
     try {
         const res = await authFetch(`${API_BASE_URL}/alerts`);
         if (!res.ok) throw new Error('Failed to fetch alerts');
-        return res.json();
+        return await res.json();
     } catch (err) {
+        if (MOCK_MODE) return MOCK_ALERTS;
         console.error('API connection failed', err);
         return [];
     }
 }
 
 export async function acknowledgeAlert(alertId: string) {
-    const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to acknowledge alert');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to acknowledge alert');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, id: alertId };
+        throw err;
+    }
 }
 
 export async function ignoreAlert(alertId: string) {
-    const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to ignore alert');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to ignore alert');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, id: alertId };
+        throw err;
+    }
 }
 
 export async function bulkAcknowledgeAlerts(alertIds: string[]) {
-    const res = await authFetch(`${API_BASE_URL}/alerts/bulk-acknowledge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ ids: alertIds }),
-    });
-    if (!res.ok) throw new Error('Failed to bulk acknowledge');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/alerts/bulk-acknowledge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ ids: alertIds }),
+        });
+        if (!res.ok) throw new Error('Failed to bulk acknowledge');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, count: alertIds.length };
+        throw err;
+    }
 }
 
 // ─── Escrow ──────────────────────────────────────────────────────
@@ -239,70 +268,107 @@ export async function fetchEscrows() {
     try {
         const res = await authFetch(`${API_BASE_URL}/escrows`);
         if (!res.ok) throw new Error('Failed to fetch escrows');
-        return res.json();
+        return await res.json();
     } catch (err) {
+        if (MOCK_MODE) return MOCK_ESCROWS;
         console.error('API unavailable, failed to fetch escrows', err);
         throw err;
     }
 }
 
 export async function settleEscrow(escrowId: string) {
-    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to settle escrow');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to settle escrow');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, id: escrowId };
+        throw err;
+    }
 }
 
 export async function disputeEscrow(escrowId: string) {
-    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to dispute escrow');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to dispute escrow');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, id: escrowId };
+        throw err;
+    }
 }
 
 export async function releaseEscrow(escrowId: string) {
-    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to release escrow');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to release escrow');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, id: escrowId };
+        throw err;
+    }
 }
 
 // ─── Audits ──────────────────────────────────────────────────────
 export async function fetchAudits() {
-    const res = await authFetch(`${API_BASE_URL}/audits`);
-    if (!res.ok) throw new Error('Failed to fetch audits');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/audits`);
+        if (!res.ok) throw new Error('Failed to fetch audits');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return MOCK_AUDITS;
+        console.error('API connection failed', err);
+        throw err;
+    }
 }
 
 export async function requestAudit(shipmentId: string) {
-    const res = await authFetch(`${API_BASE_URL}/audits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ shipment_id: shipmentId }),
-    });
-    if (!res.ok) throw new Error('Failed to request audit');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/audits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ shipment_id: shipmentId }),
+        });
+        if (!res.ok) throw new Error('Failed to request audit');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, shipmentId, auditId: 'MOCK-AUD-999' };
+        throw err;
+    }
 }
 
 // ─── Reports ─────────────────────────────────────────────────────
 export async function generateReport(reportType: string) {
-    const res = await authFetch(`${API_BASE_URL}/reports/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ type: reportType }),
-    });
-    if (!res.ok) throw new Error('Failed to generate report');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/reports/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ type: reportType }),
+        });
+        if (!res.ok) throw new Error('Failed to generate report');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, type: reportType, url: '#' };
+        throw err;
+    }
 }
 
 // ─── Settings / Profile ─────────────────────────────────────────
 export async function updateProfile(data: { displayName?: string; email?: string; preferences?: Record<string, boolean> }) {
-    const res = await authFetch(`${API_BASE_URL}/users/me`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
-            display_name: data.displayName,
-            email: data.email,
-            preferences: data.preferences
-        }),
-    });
-    if (!res.ok) throw new Error('Failed to update profile');
-    return res.json();
+    try {
+        const res = await authFetch(`${API_BASE_URL}/users/me`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({
+                display_name: data.displayName,
+                email: data.email,
+                preferences: data.preferences
+            }),
+        });
+        if (!res.ok) throw new Error('Failed to update profile');
+        return await res.json();
+    } catch (err) {
+        if (MOCK_MODE) return { success: true, ...data };
+        throw err;
+    }
 }
