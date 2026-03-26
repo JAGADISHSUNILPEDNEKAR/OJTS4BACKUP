@@ -3,7 +3,7 @@ import logging
 import json
 import os
 from aiokafka import AIOKafkaConsumer
-from escrow import process_fund_hold
+from escrow import process_fund_hold, PSBTTriggerRequest
 
 logger = logging.getLogger("escrow-service.consumer")
 
@@ -12,10 +12,11 @@ async def consume_alerts():
     logger.info(f"Starting Kafka consumer for topics on {bootstrap_servers}")
     
     try:
-        # Listen to both topics
+        # Listen to relevant topics
         consumer = AIOKafkaConsumer(
             'alert.events',
             'escrow.psbt.response',
+            'escrow.psbt.request',
             bootstrap_servers=bootstrap_servers,
             group_id="escrow-service-group",
             value_deserializer=lambda m: json.loads(m.decode('utf-8')) if m else None,
@@ -38,8 +39,27 @@ async def consume_alerts():
                 
                 if severity == "CRITICAL" and shipment_id:
                     logger.info("Critical alert detected. Triggering fund hold via PSBT...")
-                    await process_fund_hold(shipment_id)
+                    # Mocking the rest of the request for critical alert trigger
+                    # In a real scenario, we'd fetch these from the DB or another service
+                    mock_req = PSBTTriggerRequest(
+                        shipment_id=shipment_id,
+                        amount_usd=100.0,
+                        amount_btc=0.001,
+                        buyer_id="auto-buyer",
+                        seller_id="auto-seller",
+                        buyer_pubkey="0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352",
+                        seller_pubkey="03b01a1c93a9d4a6f23f5b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"
+                    )
+                    await process_fund_hold(mock_req)
             
+            elif topic == 'escrow.psbt.request':
+                logger.info(f"Consumed escrow.psbt.request for shipment {event.get('shipment_id')}")
+                try:
+                    req = PSBTTriggerRequest(**event)
+                    await process_fund_hold(req)
+                except Exception as e:
+                    logger.error(f"Failed to parse or process PSBTTriggerRequest: {e}")
+
             elif topic == 'escrow.psbt.response':
                 shipment_id = event.get('shipment_id')
                 psbt = event.get('psbt')
