@@ -20,9 +20,25 @@ impl PsbtService {
         Self { escrow_agent_key, rpc_client }
     }
 
+    pub fn fetch_unspent_utxo(&self) -> Result<(Txid, u32, u64), String> {
+        if let Some(ref rpc) = self.rpc_client {
+            let unspent = rpc.list_unspent(None, None, None, None, None)
+                .map_err(|e| format!("Bitcoin RPC listunspent error: {}", e))?;
+            
+            if let Some(utxo) = unspent.first() {
+                Ok((utxo.txid, utxo.vout, utxo.amount.to_sat()))
+            } else {
+                Err("No unspent UTXOs found in the Bitcoin node wallet.".to_string())
+            }
+        } else {
+            // Mock UTXO for tests if RPC is missing
+            Ok((Txid::all_zeros(), 0, 100_000))
+        }
+    }
+
     #[allow(dead_code)]
-    pub fn create_multisig_psbt(&self, shipment_id: &str, buyer_pubkey: &str, seller_pubkey: &str) -> Result<String, String> {
-        log::info!("Creating real 2-of-3 PSBT for shipment {}", shipment_id);
+    pub fn create_multisig_psbt(&self, shipment_id: &str, buyer_pubkey: &str, seller_pubkey: &str, amount_sat: u64) -> Result<String, String> {
+        log::info!("Creating real 2-of-3 PSBT for shipment {} with amount {} sats", shipment_id, amount_sat);
 
         let secp = bitcoin::secp256k1::Secp256k1::new();
         
@@ -50,9 +66,10 @@ impl PsbtService {
             .push_opcode(OP_CHECKMULTISIG)
             .into_script();
 
-        // Use a dummy TXID for PSBT input in this example
-        let txid = Txid::all_zeros();
-        let outpoint = OutPoint { txid, vout: 0 };
+        // Use a real UTXO if available, otherwise fallback (for tests)
+        let (txid, vout, input_amount) = self.fetch_unspent_utxo().unwrap_or((Txid::all_zeros(), 0, 100_000));
+        
+        let outpoint = OutPoint { txid, vout };
         let txin = TxIn {
             previous_output: outpoint,
             script_sig: ScriptBuf::new(),
@@ -61,7 +78,7 @@ impl PsbtService {
         };
 
         let txout = TxOut {
-            value: 100_000, // 0.001 BTC placeholder
+            value: amount_sat,
             script_pubkey: ScriptBuf::new_v0_p2wsh(&witness_script.wscript_hash()),
         };
 
@@ -77,7 +94,7 @@ impl PsbtService {
         let mut psbt_in = PsbtInput::default();
         psbt_in.witness_script = Some(witness_script);
         psbt_in.witness_utxo = Some(TxOut {
-            value: 100_000,
+            value: input_amount,
             script_pubkey: ScriptBuf::new_v0_p2wsh(&psbt_in.witness_script.as_ref().unwrap().wscript_hash()),
         });
         psbt.inputs[0] = psbt_in;

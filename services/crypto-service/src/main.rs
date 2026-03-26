@@ -217,7 +217,10 @@ async fn main() {
                                                 }
                                             }
 
-                                            match psbt_service.create_multisig_psbt(shipment_id, buyer_key, seller_key) {
+                                            let amount_btc = req["amount_btc"].as_f64().unwrap_or(0.001);
+                                            let amount_sat = (amount_btc * 100_000_000.0) as u64;
+
+                                            match psbt_service.create_multisig_psbt(shipment_id, buyer_key, seller_key, amount_sat) {
                                                 Ok(generated_psbt) => {
                                                     let response = serde_json::json!({
                                                         "status": "PSBT_GENERATED",
