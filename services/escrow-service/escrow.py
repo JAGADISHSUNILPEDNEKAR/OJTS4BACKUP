@@ -1,12 +1,11 @@
-import logging
 from kafka_producer import publish_message
 from pydantic import BaseModel
-from typing import Set
+from sqlalchemy.future import select
+from models import EscrowState
+from database import AsyncSessionLocal
 
 logger = logging.getLogger("escrow-service.core")
 
-# In-memory dictionary to track multisig threshold
-SIGNATURE_STORE = {}
 THRESHOLD = 2
 
 class PSBTTriggerRequest(BaseModel):
@@ -21,6 +20,23 @@ class PSBTTriggerRequest(BaseModel):
 
 async def process_fund_hold(data: PSBTTriggerRequest) -> dict:
     logger.info(f"Triggering PSBT flow via Crypto Service for shipment {data.shipment_id}")
+    
+    async with AsyncSessionLocal() as session:
+        # Check if already exists
+        stmt = select(EscrowState).where(EscrowState.shipment_id == data.shipment_id)
+        result = await session.execute(stmt)
+        escrow = result.scalar_one_or_none()
+        
+        if not escrow:
+            escrow = EscrowState(
+                shipment_id=data.shipment_id,
+                status="pending_signatures",
+                signers=[],
+                amount_usd=int(data.amount_usd),
+                amount_btc=int(data.amount_btc * 100_000_000) # Store as sats
+            )
+            session.add(escrow)
+            await session.commit()
     
     # Generate the request payload dynamically
     request_payload = {
@@ -42,11 +58,6 @@ async def process_fund_hold(data: PSBTTriggerRequest) -> dict:
         "required_signatures": data.required_signatures
     }
     
-    SIGNATURE_STORE[data.shipment_id] = {
-        "signers": set(),
-        "status": "pending_signatures"
-    }
-    
     # Publish to crypto-service via Kafka
     await publish_message("escrow.psbt.request", data.shipment_id, request_payload)
     
@@ -58,4 +69,14 @@ async def process_fund_hold(data: PSBTTriggerRequest) -> dict:
 
 async def finalize_escrow(shipment_id: str):
     logger.info(f"Threshold reached! Publishing escrow.psbt.finalize for shipment {shipment_id}")
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(EscrowState).where(EscrowState.shipment_id == shipment_id)
+        result = await session.execute(stmt)
+        escrow = result.scalar_one_or_none()
+        
+        if escrow:
+            escrow.status = "finalized"
+            await session.commit()
+            
     await publish_message("escrow.psbt.finalize", shipment_id, {"shipment_id": shipment_id})
