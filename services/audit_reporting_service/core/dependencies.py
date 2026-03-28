@@ -10,6 +10,17 @@ from database import AsyncSessionLocal
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
+# Comprehensive Role List
+class UserRole:
+    SUPERADMIN = "SUPERADMIN"
+    COMPANY = "COMPANY"
+    AUDITOR = "AUDITOR"
+    FARMER = "FARMER"
+    LOGISTICS = "LOGISTICS"
+    RETAILER = "RETAILER"
+    GOVERNMENT = "GOVERNMENT"
+    USER = "USER"
+
 async def get_current_user_from_token(token: str = Depends(oauth2_scheme)) -> CurrentUser:
     try:
         # RS256 using Auth Service's Public Key
@@ -55,9 +66,9 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, user: CurrentUser = Depends(get_current_user_from_token)):
-        if user.role not in self.allowed_roles:
+        if user.role not in self.allowed_roles and user.role != UserRole.SUPERADMIN:
              raise HTTPException(
                  status_code=status.HTTP_403_FORBIDDEN,
-                 detail="Operation not permitted"
+                 detail=f"Operation not permitted for role: {user.role}"
              )
         return user
