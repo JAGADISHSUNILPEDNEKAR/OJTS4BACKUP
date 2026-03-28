@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
 
-from core.dependencies import get_current_user_from_token, get_db_with_rls
+from core.dependencies import get_current_user_from_token, get_db_with_rls, RoleChecker, UserRole
 from models import AuditLog
 from schemas import CurrentUser
 
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[Dict[str, Any]])
 async def fetch_audits(
-    current_user: CurrentUser = Depends(get_current_user_from_token),
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.AUDITOR, UserRole.GOVERNMENT])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     """Returns a list of audits dynamically queried from audit_logs."""
@@ -52,7 +52,7 @@ class AuditRequest(BaseModel):
 @router.post("/")
 async def request_audit(
     req: AuditRequest, 
-    current_user: CurrentUser = Depends(get_current_user_from_token),
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.COMPANY, UserRole.GOVERNMENT, UserRole.AUDITOR])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     """Logs a real request for a new audit in the audit_logs table."""

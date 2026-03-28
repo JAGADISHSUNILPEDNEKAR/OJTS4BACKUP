@@ -10,7 +10,7 @@ from sqlalchemy.future import select
 from sqlalchemy import String, desc
 
 from core.config import settings
-from core.dependencies import get_current_user_from_token, get_db_with_rls
+from core.dependencies import get_current_user_from_token, get_db_with_rls, RoleChecker, UserRole
 from models import AuditLog
 from schemas import CurrentUser
 
@@ -31,7 +31,7 @@ class ReportRequest(BaseModel):
 @router.post("/generate")
 async def generate_summary_report(
     req: ReportRequest, 
-    current_user: CurrentUser = Depends(get_current_user_from_token),
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.AUDITOR, UserRole.GOVERNMENT, UserRole.COMPANY])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     """Generates a summary report of all recent audit logs."""
@@ -74,7 +74,7 @@ async def generate_summary_report(
 @router.get("/shipment/{shipment_id}/proof")
 async def generate_pdf_proof(
     shipment_id: str, 
-    current_user: CurrentUser = Depends(get_current_user_from_token),
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.AUDITOR, UserRole.GOVERNMENT, UserRole.COMPANY, UserRole.FARMER])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     logger.info(f"Generating PDF proof for shipment {shipment_id}")
