@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { generateReport } from '@/lib/api';
+import { generateReport, getCurrentUser } from '@/lib/api';
 
 export default function ReportsPage() {
+    const router = useRouter();
     const [generating, setGenerating] = useState<string | null>(null);
+
+    useEffect(() => {
+        const user = getCurrentUser();
+        if (user && user.role !== 'ADMIN') {
+            router.replace('/');
+        }
+    }, [router]);
     const [generatedReports, setGeneratedReports] = useState<string[]>([]);
     const [activeCategory, setActiveCategory] = useState('All');
 

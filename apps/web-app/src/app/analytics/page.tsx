@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { getCurrentUser } from '@/lib/api';
 
 export default function AnalyticsPage() {
+    const router = useRouter();
     const [zoomLevel, setZoomLevel] = useState(1);
     const [activeTimeframe, setActiveTimeframe] = useState('30d');
+
+    useEffect(() => {
+        const user = getCurrentUser();
+        if (user && user.role !== 'ADMIN') {
+            router.replace('/');
+        }
+    }, [router]);
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 2));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));

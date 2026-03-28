@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, fetchAlerts, createShipment, requestAudit, Shipment, Alert } from '@/lib/api';
+import { fetchShipments, fetchAlerts, createShipment, requestAudit, Shipment, Alert, getCurrentUser } from '@/lib/api';
 
 export default function Home() {
   const router = useRouter();
@@ -113,10 +113,10 @@ export default function Home() {
             <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '1.25rem' }}>Quick Execution</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {[
-                { title: 'Initiate Shipment', desc: 'Bind sensors and define escrow', action: handleInitiateShipment, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="22" height="5"></rect><polyline points="21 8 21 21 3 21 3 8"></polyline></svg> },
-                { title: 'New Escrow Contract', desc: 'Multi-sig financial protection', action: handleNewEscrow, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
-                { title: 'Request Audit', desc: 'Verified compliance verification', action: handleRequestAudit, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
-              ].map((item, i) => (
+                { title: 'Initiate Shipment', desc: 'Bind sensors and define escrow', action: handleInitiateShipment, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="22" height="5"></rect><polyline points="21 8 21 21 3 21 3 8"></polyline></svg>, roles: ['ADMIN', 'USER'] },
+                { title: 'New Escrow Contract', desc: 'Multi-sig financial protection', action: handleNewEscrow, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>, roles: ['ADMIN'] },
+                { title: 'Request Audit', desc: 'Verified compliance verification', action: handleRequestAudit, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>, roles: ['ADMIN'] },
+              ].filter(item => item.roles.includes(getCurrentUser()?.role || 'USER')).map((item, i) => (
                 <div key={i} onClick={item.action} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-light)', cursor: 'pointer', transition: 'background var(--transition-fast)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                   <div style={{ color: 'var(--primary)' }}>{item.icon}</div>
                   <div style={{ flex: 1 }}>
