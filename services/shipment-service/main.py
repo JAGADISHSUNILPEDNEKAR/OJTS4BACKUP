@@ -12,7 +12,7 @@ from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 from database import engine, get_db, AsyncSessionLocal, Base
 from models import Shipment, CustodyEvent
 from schemas import CustodyHandoff, ShipmentResponse, CurrentUser, EscrowInitRequest
-from core.dependencies import get_current_user_from_token, RoleChecker
+from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from core.config import settings
 from core.s3_utils import upload_to_s3
 from core.pdf_generator import generate_shipment_proof
@@ -70,7 +70,7 @@ async def create_shipment(
     farmer_id: str = Form(...), 
     destination: str = Form(...), 
     manifest: UploadFile = File(...),
-    current_user: CurrentUser = Depends(RoleChecker(["FARMER", "ADMIN"])),
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.FARMER, UserRole.COMPANY])),
     db: AsyncSession = Depends(get_db_with_rls),
 ):
     # 1. Real ML pre-check via HTTP
@@ -137,6 +137,7 @@ async def create_shipment(
 async def custody_handoff(
     shipment_id: str, 
     handoff: CustodyHandoff,
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.LOGISTICS, UserRole.FARMER])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     # 0. Fetch shipment
@@ -190,6 +191,7 @@ async def custody_handoff(
 @app.get("/api/v1/shipments/{shipment_id}/proof/pdf", response_class=Response)
 async def download_proof_pdf(
     shipment_id: str,
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.AUDITOR, UserRole.FARMER, UserRole.COMPANY])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(
@@ -213,6 +215,7 @@ async def download_proof_pdf(
 @app.get("/api/v1/shipments/{shipment_id}/risk")
 async def get_shipment_risk(
     shipment_id: str,
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.AUDITOR, UserRole.GOVERNMENT, UserRole.COMPANY])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
