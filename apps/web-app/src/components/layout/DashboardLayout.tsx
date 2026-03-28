@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
-import { isAuthenticated } from '@/lib/api';
+import { isAuthenticated, getCurrentUser } from '@/lib/api';
 
 export default function DashboardLayout({
     children,
@@ -87,8 +87,12 @@ export default function DashboardLayout({
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <div style={{ textAlign: 'right' }}>
-                                <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-main)' }}>Alex Rivera</p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Enterprise Admin</p>
+                                <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-main)' }}>
+                                    {getCurrentUser()?.display_name || getCurrentUser()?.email || 'User'}
+                                </p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                                    {getCurrentUser()?.role === 'ADMIN' ? 'Enterprise Admin' : 'Customer'}
+                                </p>
                             </div>
                             <div onClick={() => router.push('/profile')} style={{ position: 'relative', cursor: 'pointer' }}>
                                 <div style={{
@@ -96,7 +100,7 @@ export default function DashboardLayout({
                                     height: '40px',
                                     borderRadius: '50%',
                                     background: '#e2e8f0',
-                                    backgroundImage: 'url("https://i.pravatar.cc/150?u=alex@origin.io")',
+                                    backgroundImage: `url("https://i.pravatar.cc/150?u=${getCurrentUser()?.email || 'user@origin.io'}")`,
                                     backgroundSize: 'cover'
                                 }}></div>
                                 <div style={{ position: 'absolute', bottom: '0', right: '0', width: '10px', height: '10px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid white' }}></div>
