@@ -11,3 +11,5 @@ PyJWT
 pyotp
 redis[hiredis]
 cryptography
+authlib
+httpx

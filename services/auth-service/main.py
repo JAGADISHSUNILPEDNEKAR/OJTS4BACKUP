@@ -1,7 +1,9 @@
 import uuid
 import json
 from datetime import timedelta
-from fastapi import FastAPI, Depends, HTTPException, status
+from authlib.integrations.starlette_client import OAuth
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -16,6 +18,19 @@ from core.security import (
 from core.config import settings
 
 app = FastAPI(title="Origin Auth Service")
+# Authlib needs a session middleware for OAuth2 state
+app.add_middleware(SessionMiddleware, secret_key=settings.PRIVATE_KEY)
+
+oauth = OAuth()
+oauth.register(
+    name='google',
+    client_id=settings.GOOGLE_CLIENT_ID,
+    client_secret=settings.GOOGLE_CLIENT_SECRET,
+    server_metadata_url=settings.GOOGLE_CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 # ── Redis connection (lazy init, graceful fallback) ───────────────
 _redis = None
@@ -264,6 +279,61 @@ async def logout(token: str = Depends(
     return {"message": "Successfully logged out"}
 
 
-@app.post("/api/v1/auth/sso")
-async def sso_login():
-    return {"message": "SSO not fully implemented yet"}
+@app.get("/api/v1/auth/google/login")
+async def google_login(request: Request):
+    """Redirect to Google for authentication."""
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=501, detail="Google OAuth not configured")
+    redirect_uri = settings.GOOGLE_REDIRECT_URI
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+@app.get("/api/v1/auth/google/callback")
+async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
+    """Handle the Google OAuth2 callback."""
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=501, detail="Google OAuth not configured")
+    
+    try:
+        # Use httpx client explicitly if needed, but Authlib handles it
+        token = await oauth.google.authorize_access_token(request)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"OAuth error: {str(e)}")
+    
+    user_info = token.get('userinfo')
+    if not user_info:
+        raise HTTPException(status_code=400, detail="Failed to retrieve user info from Google")
+    
+    email = user_info.get('email')
+    name = user_info.get('name')
+    
+    # 1. Check if user exists
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        # Create user if doesn't exist (default to USER role)
+        user = User(
+            id=uuid.uuid4(),
+            email=email,
+            display_name=name,
+            password_hash="SSO_MANAGED", 
+            role="USER",
+            is_active=True
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    
+    # 2. Generate tokens
+    access_token = create_access_token(
+        subject=str(user.id),
+        role=user.role,
+        org_id=str(user.organization_id) if user.organization_id else None
+    )
+    refresh_token = create_refresh_token(subject=str(user.id))
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
