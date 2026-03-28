@@ -31,6 +31,12 @@ const MOCK_AUDITS = [
 
 
 // ─── Auth Helpers ────────────────────────────────────────────────
+export interface User {
+    email: string;
+    role: 'ADMIN' | 'USER' | string;
+    display_name?: string;
+}
+
 export function getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('origin_access_token');
@@ -41,6 +47,17 @@ export function getRefreshToken(): string | null {
     return localStorage.getItem('origin_refresh_token');
 }
 
+export function getCurrentUser(): User | null {
+    if (typeof window === 'undefined') return null;
+    const userJson = localStorage.getItem('origin_user');
+    if (!userJson) return null;
+    try {
+        return JSON.parse(userJson);
+    } catch {
+        return null;
+    }
+}
+
 export function setTokens(accessToken: string, refreshToken?: string) {
     localStorage.setItem('origin_access_token', accessToken);
     if (refreshToken) {
@@ -48,9 +65,14 @@ export function setTokens(accessToken: string, refreshToken?: string) {
     }
 }
 
-export function clearTokens() {
+export function setUser(user: User) {
+    localStorage.setItem('origin_user', JSON.stringify(user));
+}
+
+export function clearAuth() {
     localStorage.removeItem('origin_access_token');
     localStorage.removeItem('origin_refresh_token');
+    localStorage.removeItem('origin_user');
 }
 
 export function isAuthenticated(): boolean {
@@ -100,15 +122,23 @@ export async function login(email: string, password: string, totpCode?: string) 
 
         const data = await res.json();
         setTokens(data.access_token, data.refresh_token);
+        if (data.user) setUser(data.user);
         return data;
     } catch (err) {
         console.warn('Backend unreachable, using mock login for dev', err);
+        // RBAC Mock Logic: admin@origin.io gets ADMIN role, otherwise USER
+        const role = email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER';
         const mockData = {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
-            user: { email, role: 'admin' }
+            user: { 
+                email, 
+                role, 
+                display_name: role === 'ADMIN' ? 'Alex Rivera' : email.split('@')[0] 
+            }
         };
         setTokens(mockData.access_token, mockData.refresh_token);
+        setUser(mockData.user);
         return mockData;
     }
 }
@@ -128,15 +158,22 @@ export async function register(email: string, password: string, role?: string) {
 
         const data = await res.json();
         setTokens(data.access_token, data.refresh_token);
+        if (data.user) setUser(data.user);
         return data;
     } catch (err) {
         console.warn('Backend unreachable, using mock register for dev', err);
+        const assignedRole = role || (email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER');
         const mockData = {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
-            user: { email, role: role || 'admin' }
+            user: { 
+                email, 
+                role: assignedRole,
+                display_name: email.split('@')[0]
+            }
         };
         setTokens(mockData.access_token, mockData.refresh_token);
+        setUser(mockData.user);
         return mockData;
     }
 }
@@ -153,16 +190,13 @@ export async function refreshAccessToken(): Promise<boolean> {
             body: JSON.stringify({ refresh_token: refreshToken }),
         });
 
-        if (!res.ok) {
-            clearTokens();
-            return false;
-        }
+            clearAuth();
 
         const data = await res.json();
         setTokens(data.access_token, data.refresh_token);
         return true;
     } catch {
-        clearTokens();
+        clearAuth();
         return false;
     }
 }
@@ -173,7 +207,7 @@ export async function logout() {
     } catch {
         // Server-side logout is best-effort
     }
-    clearTokens();
+    clearAuth();
 }
 
 // ─── Shipments ───────────────────────────────────────────────────
