@@ -10,7 +10,7 @@ module "db" {
   engine_version       = "15.4"
   family               = "postgres15"
   major_engine_version = "15"
-  instance_class       = "db.t4g.large"
+  instance_class       = "db.t3.micro"
 
   allocated_storage     = 50
   max_allocated_storage = 1000
@@ -71,7 +71,7 @@ resource "aws_secretsmanager_secret_version" "timescaledb_password" {
 resource "aws_db_instance" "timescaledb" {
   identifier             = "origin-${var.environment}-timescaledb"
   engine                 = "postgres"
-  instance_class         = "db.m5.large"
+  instance_class         = "db.t3.micro"
   allocated_storage      = 100
   username               = "tsdb_admin"
   password               = aws_secretsmanager_secret_version.timescaledb_password.secret_string

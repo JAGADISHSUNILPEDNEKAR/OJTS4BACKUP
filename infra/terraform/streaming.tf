@@ -2,10 +2,10 @@
 resource "aws_msk_cluster" "kafka" {
   cluster_name           = "origin-${var.environment}-kafka"
   kafka_version          = "3.5.1"
-  number_of_broker_nodes = var.environment == "prod" ? 3 : 2
+  number_of_broker_nodes = 3
 
   broker_node_group_info {
-    instance_type   = "kafka.m5.large"
+    instance_type   = "kafka.t3.small"
     client_subnets  = module.vpc.private_subnets
     security_groups = [aws_security_group.kafka_sg.id]
 

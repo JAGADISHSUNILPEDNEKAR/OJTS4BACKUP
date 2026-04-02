@@ -59,7 +59,12 @@ resource "aws_dynamodb_table" "terraform_locks" {
   }
 }
 
-# Import manually created state bucket
+# Import manually created resources
+import {
+  to = aws_dynamodb_table.terraform_locks
+  id = "origin-terraform-locks"
+}
+
 import {
   to = aws_s3_bucket.terraform_state
   id = "origin-terraform-state-896170900409"

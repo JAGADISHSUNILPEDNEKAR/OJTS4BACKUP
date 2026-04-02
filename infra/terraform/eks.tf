@@ -32,7 +32,7 @@ module "eks" {
       max_size     = 5
       desired_size = 2
 
-      instance_types = ["t3.xlarge"]
+      instance_types = ["t3.medium"]
       capacity_type  = "ON_DEMAND"
     }
 
@@ -42,8 +42,8 @@ module "eks" {
       max_size     = 3
       desired_size = 1
 
-      instance_types = ["m5.xlarge", "c5.xlarge"]
-      capacity_type  = "SPOT"
+      instance_types = ["t3.large"]
+      capacity_type  = "ON_DEMAND"
 
       labels = {
         workload = "machine-learning"
