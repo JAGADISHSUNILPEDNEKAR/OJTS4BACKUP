@@ -37,10 +37,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
-          # In a real environment, you use OIDC (Role ARN) instead of access keys if possible
-          # role-to-assume: arn:aws:iam::123456789012:role/github-actions-origin-role
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::896170900409:role/github-actions-origin-role
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
