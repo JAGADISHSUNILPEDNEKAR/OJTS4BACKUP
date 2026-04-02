@@ -14,6 +14,7 @@
  */
 
 import { createReadStream, mkdirSync, writeFileSync, existsSync, rmSync } from 'fs';
+import { createGunzip } from 'zlib';
 import { parse } from 'csv-parse';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -23,11 +24,14 @@ const WEB_APP_ROOT = resolve(__dirname, '..');
 const PUBLIC_DATA_DIR = resolve(WEB_APP_ROOT, 'public', 'data');
 const PAGE_SIZE = 100; // rows per static page file
 
-// Try multiple CSV locations
+// Try multiple CSV locations (both plain and gzipped)
 const CSV_CANDIDATES = [
     resolve(WEB_APP_ROOT, '..', '..', 'Dataset', 'clean_dataset.csv'),
+    resolve(WEB_APP_ROOT, '..', '..', 'Dataset', 'clean_dataset.csv.gz'),
     resolve(WEB_APP_ROOT, 'Dataset', 'clean_dataset.csv'),
+    resolve(WEB_APP_ROOT, 'Dataset', 'clean_dataset.csv.gz'),
     resolve(process.cwd(), 'Dataset', 'clean_dataset.csv'),
+    resolve(process.cwd(), 'Dataset', 'clean_dataset.csv.gz'),
 ];
 
 function findCSV() {
@@ -35,6 +39,15 @@ function findCSV() {
         if (existsSync(p)) return p;
     }
     throw new Error(`CSV not found. Tried: ${CSV_CANDIDATES.join(', ')}`);
+}
+
+function createCSVReadStream(csvPath) {
+    const stream = createReadStream(csvPath);
+    if (csvPath.endsWith('.gz')) {
+        console.log('[build-dataset] Decompressing gzipped CSV...');
+        return stream.pipe(createGunzip());
+    }
+    return stream;
 }
 
 const STATUS_MAP = {
@@ -140,7 +153,7 @@ async function main() {
 
     let rowIndex = 0;
 
-    const parser = createReadStream(csvPath).pipe(
+    const parser = createCSVReadStream(csvPath).pipe(
         parse({ columns: true, skip_empty_lines: true, trim: true })
     );
 

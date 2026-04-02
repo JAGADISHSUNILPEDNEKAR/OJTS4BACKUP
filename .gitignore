@@ -34,4 +34,7 @@ apps/web-app/out/
 
 # Java/Maven (if any)
 target/
-Dataset/
+
+# Dataset - ignore raw CSV (150MB) but allow gzipped (48MB) for Vercel build
+Dataset/*.csv
+!Dataset/*.csv.gz
