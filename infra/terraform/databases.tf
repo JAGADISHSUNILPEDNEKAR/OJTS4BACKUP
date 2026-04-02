@@ -29,7 +29,7 @@ module "db" {
 
   maintenance_window = "Mon:00:00-Mon:03:00"
   backup_window      = "03:00-06:00"
-  
+
   skip_final_snapshot = var.environment == "prod" ? false : true
 }
 
@@ -69,15 +69,15 @@ resource "aws_secretsmanager_secret_version" "timescaledb_password" {
 }
 
 resource "aws_db_instance" "timescaledb" {
-  identifier          = "origin-${var.environment}-timescaledb"
-  engine              = "postgres"
-  instance_class      = "db.m5.large"
-  allocated_storage   = 100
-  username            = "tsdb_admin"
-  password            = aws_secretsmanager_secret_version.timescaledb_password.secret_string
-  skip_final_snapshot = var.environment == "prod" ? false : true
+  identifier             = "origin-${var.environment}-timescaledb"
+  engine                 = "postgres"
+  instance_class         = "db.m5.large"
+  allocated_storage      = 100
+  username               = "tsdb_admin"
+  password               = aws_secretsmanager_secret_version.timescaledb_password.secret_string
+  skip_final_snapshot    = var.environment == "prod" ? false : true
   vpc_security_group_ids = [aws_security_group.db_sg.id]
-  db_subnet_group_name   = module.db.db_subnet_group_name
+  db_subnet_group_name   = module.db.db_subnet_group_id
 }
 
 # DB Security Group
