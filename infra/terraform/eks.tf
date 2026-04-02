@@ -17,6 +17,15 @@ module "eks" {
   # OIDC identity provider for IRSA (IAM Roles for Service Accounts)
   enable_irsa = true
 
+  manage_aws_auth_configmap = true
+  aws_auth_users = [
+    {
+      userarn  = "arn:aws:iam::896170900409:user/Origin"
+      username = "Origin"
+      groups   = ["system:masters"]
+    }
+  ]
+
   eks_managed_node_group_defaults = {
     ami_type       = "AL2_x86_64"
     instance_types = ["t3.micro"]
