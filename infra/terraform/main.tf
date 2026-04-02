@@ -8,14 +8,13 @@ terraform {
     }
   }
 
-  # In a real environment, uncomment this to use remote state
-  # backend "s3" {
-  #   bucket         = "origin-terraform-state"
-  #   key            = "infra/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   encrypt        = true
-  #   dynamodb_table = "origin-terraform-locks"
-  # }
+  backend "s3" {
+    bucket         = "origin-terraform-state-896170900409"
+    key            = "infra/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "origin-terraform-locks"
+  }
 }
 
 provider "aws" {
