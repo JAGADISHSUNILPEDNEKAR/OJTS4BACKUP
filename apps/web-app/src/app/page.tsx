@@ -15,6 +15,9 @@ export default function Home() {
   const [stats, setStats] = useState<DatasetStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+  const selectedShipment = useMemo(() => shipments.find(s => s.id === selectedShipmentId) || null, [shipments, selectedShipmentId]);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -34,6 +37,10 @@ export default function Home() {
     };
     loadData();
   }, []);
+
+  const handleShipmentClick = (id: string) => {
+    setSelectedShipmentId(prev => prev === id ? null : id);
+  };
 
   const handleInitiateShipment = async () => {
     try {
@@ -104,7 +111,12 @@ export default function Home() {
         {/* Live Telemetry Map */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
           <div style={{ height: '400px' }}>
-            <LiveTelemetryMap shipments={shipments} stats={stats} />
+            <LiveTelemetryMap 
+              shipments={shipments} 
+              stats={stats} 
+              selectedShipment={selectedShipment}
+              onCloseShipment={() => setSelectedShipmentId(null)}
+            />
           </div>
         </div>
 
@@ -162,7 +174,17 @@ export default function Home() {
               {loading ? (
                 <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading shipments...</td></tr>
               ) : shipments.map((row, i) => (
-                <tr key={i}>
+                <tr 
+                  key={row.id} 
+                  onClick={() => handleShipmentClick(row.id)}
+                  style={{ 
+                    cursor: 'pointer', 
+                    background: selectedShipmentId === row.id ? 'var(--bg-hover)' : 'transparent',
+                    borderLeft: selectedShipmentId === row.id ? '2px solid var(--primary)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  className="shipment-row"
+                >
                   <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{row.id}</td>
                   <td style={{ fontSize: '0.75rem' }}>
                     <span style={{ fontWeight: 600 }}>{row.origin?.split(',')[0]}</span>
