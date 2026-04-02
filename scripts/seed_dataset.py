@@ -46,6 +46,8 @@ def bulk_seed(limit=None, truncate=True):
     session = Session()
 
     if truncate:
+        print("Ensuring tables exist...")
+        Base.metadata.create_all(engine)
         print("Clearing existing data...")
         try:
             session.execute(text("TRUNCATE TABLE shipments CASCADE;"))
