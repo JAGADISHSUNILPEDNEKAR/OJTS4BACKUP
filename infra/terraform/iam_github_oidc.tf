@@ -97,6 +97,45 @@ resource "aws_iam_role_policy" "eks_policy" {
   })
 }
 
+# Permission policy for Terraform State Access (S3 & DynamoDB)
+resource "aws_iam_role_policy" "terraform_state_policy" {
+  name = "github-actions-terraform-state-policy"
+  role = aws_iam_role.github_actions_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+        Resource = "arn:aws:s3:::origin-terraform-state-896170900409"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::origin-terraform-state-896170900409/infra/terraform.tfstate"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:DescribeTable",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem"
+        ]
+        Resource = "arn:aws:dynamodb:us-east-1:896170900409:table/origin-terraform-locks"
+      }
+    ]
+  })
+}
+
 # Output the Role ARN
 output "github_actions_role_arn" {
   description = "The ARN of the IAM Role for GitHub Actions"
