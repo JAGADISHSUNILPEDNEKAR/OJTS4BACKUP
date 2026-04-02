@@ -7,7 +7,7 @@ module "db" {
   identifier = "origin-${var.environment}-db"
 
   engine               = "postgres"
-  engine_version       = "15.4"
+  engine_version       = "15"
   family               = "postgres15"
   major_engine_version = "15"
   instance_class       = "db.t3.micro"
@@ -71,6 +71,7 @@ resource "aws_secretsmanager_secret_version" "timescaledb_password" {
 resource "aws_db_instance" "timescaledb" {
   identifier             = "origin-${var.environment}-timescaledb"
   engine                 = "postgres"
+  engine_version         = "15"
   instance_class         = "db.t3.micro"
   allocated_storage      = 100
   username               = "tsdb_admin"
