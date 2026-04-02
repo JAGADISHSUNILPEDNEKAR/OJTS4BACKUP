@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, Shipment, PaginatedResponse } from '@/lib/api';
+import { fetchShipments, fetchStats, Shipment, PaginatedResponse, DatasetStats } from '@/lib/api';
+import { useMemo } from 'react';
+
+const LiveTelemetryMap = dynamic(() => import('@/components/maps/LiveTelemetryMap'), { ssr: false });
 
 export default function ShipmentsPage() {
     const [result, setResult] = useState<PaginatedResponse<Shipment>>({ data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 });
+    const [stats, setStats] = useState<DatasetStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('All Shipments');
     const [page, setPage] = useState(1);
+    
+    const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+    const selectedShipment = useMemo(() => result.data.find(s => s.id === selectedShipmentId) || null, [result.data, selectedShipmentId]);
 
     const FILTER_MAP: Record<string, string> = {
         'All Shipments': '',
@@ -27,12 +35,29 @@ export default function ShipmentsPage() {
     }, []);
 
     useEffect(() => {
+        const loadStats = async () => {
+            try {
+                const statsData = await fetchStats();
+                setStats(statsData);
+            } catch (err) {
+                console.error('Failed to load stats', err);
+            }
+        };
+        loadStats();
+    }, []);
+
+    useEffect(() => {
         loadShipments(page, activeFilter);
+        setSelectedShipmentId(null); // Clear selection on page/filter change
     }, [page, activeFilter, loadShipments]);
 
     const handleFilterChange = (filter: string) => {
         setActiveFilter(filter);
         setPage(1);
+    };
+
+    const handleShipmentClick = (id: string) => {
+        setSelectedShipmentId(prev => prev === id ? null : id);
     };
 
     const handleExport = () => {
@@ -71,6 +96,15 @@ export default function ShipmentsPage() {
             title="Shipment Management"
             description="End-to-end telemetry and verification for global asset transfers."
         >
+            <div className="card" style={{ padding: 0, overflow: 'hidden', height: '350px', marginBottom: '1.5rem', position: 'relative' }}>
+                <LiveTelemetryMap 
+                    shipments={result.data} 
+                    stats={stats} 
+                    selectedShipment={selectedShipment}
+                    onCloseShipment={() => setSelectedShipmentId(null)}
+                />
+            </div>
+
             <div className="card" style={{ padding: '0' }}>
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '1.5rem' }}>
@@ -119,7 +153,16 @@ export default function ShipmentsPage() {
                             {loading ? (
                                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading shipments...</td></tr>
                             ) : result.data.map((shp, i) => (
-                                <tr key={i}>
+                                <tr 
+                                    key={shp.id} 
+                                    onClick={() => handleShipmentClick(shp.id)}
+                                    style={{ 
+                                        cursor: 'pointer',
+                                        background: selectedShipmentId === shp.id ? 'var(--bg-hover)' : 'transparent',
+                                        borderLeft: selectedShipmentId === shp.id ? '3px solid var(--primary)' : '3px solid transparent',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
                                     <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{shp.id}</td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
