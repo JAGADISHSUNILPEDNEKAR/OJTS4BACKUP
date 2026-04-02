@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { getCurrentUser, fetchStats, DatasetStats } from '@/lib/api';
+
+const RiskHeatmap = dynamic(() => import('@/components/maps/RiskHeatmap'), { ssr: false });
 
 export default function AnalyticsPage() {
     const router = useRouter();
@@ -176,29 +179,13 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Geographical Risk Heatmap */}
-            <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem 0 1.5rem' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Geographical Risk Heatmap</h3>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Zoom: {Math.round(zoomLevel * 100)}%</span>
                 </div>
-                <div style={{
-                    height: '400px', background: '#f8fafc', borderRadius: '12px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '1px dashed var(--border-light)', position: 'relative', overflow: 'hidden'
-                }}>
-                    <div style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.3s ease', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg" alt="World Map" style={{ width: '80%', opacity: 0.1, filter: 'grayscale(1)' }} />
-                        <div style={{ position: 'absolute', top: '40%', left: '30%', width: '120px', height: '120px', background: 'var(--danger)', opacity: 0.1, borderRadius: '50%', filter: 'blur(20px)' }}></div>
-                        <div style={{ position: 'absolute', top: '50%', left: '45%', width: '80px', height: '80px', background: 'var(--warning)', opacity: 0.15, borderRadius: '50%', filter: 'blur(15px)' }}></div>
-                        <div style={{ position: 'absolute', top: '30%', left: '65%', width: '60px', height: '60px', background: 'var(--secondary)', opacity: 0.2, borderRadius: '50%', filter: 'blur(10px)' }}></div>
-                    </div>
-                    <p style={{ position: 'absolute', color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500 }}>
-                        {stats ? `Spatial intelligence active. Monitoring ${stats.totalShipments.toLocaleString()} shipments across ${Object.keys(stats.regionCounts).length} regions.` : 'Loading...'}
-                    </p>
-                    <div style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-outline" style={{ background: 'white' }} onClick={handleZoomIn}>Zoom In</button>
-                        <button className="btn btn-outline" style={{ background: 'white' }} onClick={handleZoomOut}>Zoom Out</button>
-                    </div>
+                <div style={{ height: '450px', position: 'relative' }}>
+                    <RiskHeatmap stats={stats} zoomLevel={zoomLevel} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
                 </div>
             </div>
         </DashboardLayout>

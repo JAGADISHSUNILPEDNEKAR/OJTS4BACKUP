@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fetchShipments, fetchAlerts, fetchStats, createShipment, requestAudit, Shipment, Alert, DatasetStats, getCurrentUser } from '@/lib/api';
+
+const LiveTelemetryMap = dynamic(() => import('@/components/maps/LiveTelemetryMap'), { ssr: false });
 
 export default function Home() {
   const router = useRouter();
@@ -98,14 +101,10 @@ export default function Home() {
 
       {/* Main Grid: Map & Execution Controls */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {/* Map Placeholder */}
+        {/* Live Telemetry Map */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ height: '400px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', height: '100%', opacity: 0.1, backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-            <div style={{ position: 'absolute', top: '2rem', left: '2rem', background: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-md)' }}>
-              <p style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>LIVE TELEMETRY</p>
-              <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', margin: 0 }}>{stats ? `${fmt(stats.totalShipments)} shipments tracked across ${Object.keys(stats.regionCounts).length} regions` : 'Loading...'}</p>
-            </div>
+          <div style={{ height: '400px' }}>
+            <LiveTelemetryMap shipments={shipments} stats={stats} />
           </div>
         </div>
 
