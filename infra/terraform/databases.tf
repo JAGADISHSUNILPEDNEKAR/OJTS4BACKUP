@@ -69,16 +69,20 @@ resource "aws_secretsmanager_secret_version" "timescaledb_password" {
 }
 
 resource "aws_db_instance" "timescaledb" {
-  identifier             = "origin-${var.environment}-timescaledb"
-  engine                 = "postgres"
-  engine_version         = "15"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 100
-  username               = "tsdb_admin"
-  password               = aws_secretsmanager_secret_version.timescaledb_password.secret_string
-  skip_final_snapshot    = var.environment == "prod" ? false : true
-  vpc_security_group_ids = [aws_security_group.db_sg.id]
-  db_subnet_group_name   = module.db.db_subnet_group_id
+  identifier              = "origin-${var.environment}-timescaledb"
+  engine                  = "postgres"
+  engine_version          = "15"
+  instance_class          = "db.t3.micro"
+  allocated_storage       = 100
+  storage_type            = "gp3"
+  storage_encrypted       = true
+  db_name                 = "timescaledb"
+  username                = "tsdb_admin"
+  password                = aws_secretsmanager_secret_version.timescaledb_password.secret_string
+  skip_final_snapshot     = var.environment == "prod" ? false : true
+  vpc_security_group_ids  = [aws_security_group.db_sg.id]
+  db_subnet_group_name    = module.db.db_subnet_group_id
+  publicly_accessible     = false
 }
 
 # DB Security Group
