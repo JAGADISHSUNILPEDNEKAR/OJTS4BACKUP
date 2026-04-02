@@ -20,7 +20,7 @@ resource "aws_iam_role" "github_actions_role" {
         }
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:jagadishsunilpednekar/OJTS4BACKUP:*"
+            "token.actions.githubusercontent.com:sub" = "repo:JAGADISHSUNILPEDNEKAR/OJTS4BACKUP:*"
           }
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
