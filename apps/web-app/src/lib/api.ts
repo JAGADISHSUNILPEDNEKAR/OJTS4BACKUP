@@ -1,34 +1,87 @@
 /**
- * API Client for connecting to the local Origin backend services.
- * In a real production environment, this would hit the API Gateway (e.g., Nginx Ingress).
+ * API Client for the Origin platform.
+ * In mock/local mode, reads from pre-built static JSON in /data/ (served from CDN on Vercel).
+ * In production mode with a live backend, hits the API Gateway.
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/v1';
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || true; // Default to true if backend is unreachable
+const USE_STATIC_DATA = process.env.NEXT_PUBLIC_USE_STATIC_DATA !== 'false'; // Default: true
 
-// ─── Mock Data ───────────────────────────────────────────────────
-const MOCK_SHIPMENTS: Shipment[] = [
-    { id: 'SHP-7721-09', origin: 'Mombasa, KE', destination: 'Rotterdam, NL', farmer_id: 'F-882', status: 'IN_TRANSIT', risk_score: 0.12 },
-    { id: 'SHP-8812-44', origin: 'Santos, BR', destination: 'Shanghai, CN', farmer_id: 'F-102', status: 'CREATED', risk_score: 0.05 },
-    { id: 'SHP-9903-12', origin: 'Ho Chi Minh, VN', destination: 'Los Angeles, US', farmer_id: 'F-441', status: 'DELAYED', risk_score: 0.88 },
-    { id: 'SHP-1120-55', origin: 'Abidjan, CI', destination: 'Hamburg, DE', farmer_id: 'F-309', status: 'ARRIVED', risk_score: 0.02 },
-];
+// ─── Pagination Types ────────────────────────────────────────────
+export interface PaginatedResponse<T> {
+    data: T[];
+    total: number;
+    page: number;
+    totalPages: number;
+    pageSize: number;
+}
 
-const MOCK_ALERTS: Alert[] = [
-    { id: 'ALT-001', shipment_id: 'SHP-9903-12', severity: 'CRITICAL', type: 'TEMPERATURE_ANOMALY', timestamp: new Date().toISOString(), status: 'OPEN', message: 'Temperature exceeded threshold (12°C)' },
-    { id: 'ALT-002', shipment_id: 'SHP-7721-09', severity: 'WARNING', type: 'ROUTE_DEVIATION', timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'OPEN', message: 'Vessel off course by 12 nautical miles' },
-];
+export interface DatasetStats {
+    totalShipments: number;
+    totalAlerts: number;
+    avgRiskScore: number;
+    totalEscrowBTC: number;
+    totalEscrowUSD: number;
+    statusCounts: Record<string, number>;
+    fraudCount: number;
+    tempViolations: number;
+    routeDeviations: number;
+    originMismatches: number;
+    topCategories: Array<{ name: string; count: number }>;
+    regionCounts: Record<string, number>;
+    shippingModeCounts: Record<string, number>;
+    passedAudits: number;
+    failedAudits: number;
+    warningAudits: number;
+    criticalAlerts: number;
+    warningAlerts: number;
+}
 
-const MOCK_ESCROWS = [
-    { id: 'ESC-441', shipment_id: 'SHP-7721-09', amount: '1.25 BTC', status: 'HELD', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
-    { id: 'ESC-882', shipment_id: 'SHP-8812-44', amount: '0.88 BTC', status: 'RELEASED', address: 'bc1p5d8l0v38z0aadcsas39q278f8v9k6p5f1b1c' },
-];
+// ─── Domain Types ────────────────────────────────────────────────
+export interface Shipment {
+    id: string;
+    origin: string;
+    destination: string;
+    farmer_id: string;
+    status: string;
+    risk_score?: number;
+    created_at?: string;
+    product?: string;
+    category?: string;
+    shipping_mode?: string;
+    [key: string]: unknown;
+}
 
-const MOCK_AUDITS = [
-    { id: 'AUD-101', shipment_id: 'SHP-1120-55', status: 'VERIFIED', proof_hash: '0x7e8c9d...f0a1', timestamp: new Date().toISOString() },
-    { id: 'AUD-102', shipment_id: 'SHP-7721-09', status: 'PENDING', proof_hash: null, timestamp: new Date().toISOString() },
-];
+export interface Alert {
+    id: string;
+    shipment_id: string;
+    severity: string;
+    type: string;
+    timestamp: string;
+    status: string;
+    message?: string;
+}
 
+export interface Escrow {
+    id: string;
+    shipment_id: string;
+    amount: string;
+    status: string;
+    counterparty: string;
+    risk: number;
+    value: number;
+}
+
+export interface Audit {
+    id: string;
+    shipment_id: string;
+    entity: string;
+    type: string;
+    auditor: string;
+    status: string;
+    findings: number;
+    timestamp: string;
+}
 
 // ─── Auth Helpers ────────────────────────────────────────────────
 export interface User {
@@ -95,12 +148,42 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
     try {
         return await fetch(url, { ...options, headers });
     } catch (err) {
-        // Intercept network errors (like "Failed to fetch")
         if (err instanceof TypeError && err.message === 'Failed to fetch') {
-            console.warn(`[API] Connection failed to ${url}. Falling back to mock data if available.`);
+            console.warn(`[API] Connection failed to ${url}.`);
         }
         throw err;
     }
+}
+
+// ─── Static Data Fetcher ─────────────────────────────────────────
+async function fetchStaticPage<T>(entity: string, filter: string, page: number): Promise<PaginatedResponse<T>> {
+    const metaUrl = `/data/${entity}/meta.json`;
+    const metaRes = await fetch(metaUrl);
+    if (!metaRes.ok) throw new Error(`Failed to fetch ${metaUrl}`);
+    const meta = await metaRes.json();
+
+    const filterKey = filter || 'all';
+    const filterInfo = filterKey === 'all'
+        ? { total: meta.total, pages: meta.pages }
+        : meta.filters[filterKey];
+
+    if (!filterInfo) {
+        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: meta.pageSize };
+    }
+
+    const clampedPage = Math.max(1, Math.min(page, filterInfo.pages));
+    const dataUrl = `/data/${entity}/${filterKey}/${clampedPage}.json`;
+    const dataRes = await fetch(dataUrl);
+    if (!dataRes.ok) throw new Error(`Failed to fetch ${dataUrl}`);
+    const data = await dataRes.json();
+
+    return {
+        data: data as T[],
+        total: filterInfo.total,
+        page: clampedPage,
+        totalPages: filterInfo.pages,
+        pageSize: meta.pageSize,
+    };
 }
 
 // ─── Auth Endpoints ──────────────────────────────────────────────
@@ -126,15 +209,14 @@ export async function login(email: string, password: string, totpCode?: string) 
         return data;
     } catch (err) {
         console.warn('Backend unreachable, using mock login for dev', err);
-        // RBAC Mock Logic: admin@origin.io gets ADMIN role, otherwise USER
         const role = email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER';
         const mockData = {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
-            user: { 
-                email, 
-                role, 
-                display_name: role === 'ADMIN' ? 'Alex Rivera' : email.split('@')[0] 
+            user: {
+                email,
+                role,
+                display_name: role === 'ADMIN' ? 'Alex Rivera' : email.split('@')[0]
             }
         };
         setTokens(mockData.access_token, mockData.refresh_token);
@@ -166,8 +248,8 @@ export async function register(email: string, password: string, role?: string) {
         const mockData = {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
-            user: { 
-                email, 
+            user: {
+                email,
                 role: assignedRole,
                 display_name: email.split('@')[0]
             }
@@ -177,7 +259,6 @@ export async function register(email: string, password: string, role?: string) {
         return mockData;
     }
 }
-
 
 export async function refreshAccessToken(): Promise<boolean> {
     const refreshToken = getRefreshToken();
@@ -190,7 +271,7 @@ export async function refreshAccessToken(): Promise<boolean> {
             body: JSON.stringify({ refresh_token: refreshToken }),
         });
 
-            clearAuth();
+        if (!res.ok) { clearAuth(); return false; }
 
         const data = await res.json();
         setTokens(data.access_token, data.refresh_token);
@@ -210,26 +291,35 @@ export async function logout() {
     clearAuth();
 }
 
-// ─── Shipments ───────────────────────────────────────────────────
-export interface Shipment {
-    id: string;
-    origin: string;
-    destination: string;
-    farmer_id: string;
-    status: string;
-    risk_score?: number;
-    [key: string]: unknown;
+// ─── Stats ───────────────────────────────────────────────────────
+export async function fetchStats(): Promise<DatasetStats> {
+    if (USE_STATIC_DATA) {
+        const res = await fetch('/data/stats.json');
+        if (!res.ok) throw new Error('Failed to fetch stats');
+        return await res.json();
+    }
+    // Production: would hit a stats endpoint
+    const res = await authFetch(`${API_BASE_URL}/stats`);
+    return await res.json();
 }
 
-export async function fetchShipments(): Promise<Shipment[]> {
+// ─── Shipments ───────────────────────────────────────────────────
+export async function fetchShipments(page = 1, filter = ''): Promise<PaginatedResponse<Shipment>> {
+    if (USE_STATIC_DATA) {
+        return fetchStaticPage<Shipment>('shipments', filter, page);
+    }
     try {
-        const res = await authFetch(`${API_BASE_URL}/shipments`);
+        const params = new URLSearchParams({ page: String(page), limit: '100' });
+        if (filter) params.set('status', filter);
+        const res = await authFetch(`${API_BASE_URL}/shipments?${params}`);
         if (!res.ok) throw new Error('Failed to fetch shipments');
-        return await res.json();
+        const data = await res.json();
+        return Array.isArray(data)
+            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+            : data;
     } catch (err) {
-        if (MOCK_MODE) return MOCK_SHIPMENTS;
         console.error('API connection failed', err);
-        return [];
+        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
     }
 }
 
@@ -252,34 +342,26 @@ export async function createShipment(data: Record<string, unknown>) {
         if (!res.ok) throw new Error('Failed to create shipment');
         return await res.json();
     } catch (err) {
-        if (MOCK_MODE) {
-            const newShipment = { id: `MOCK-${Math.floor(Math.random() * 1000)}`, ...data, status: 'CREATED', risk_score: 0.1 } as Shipment;
-            return newShipment;
-        }
-        console.error('Failed to create shipment', err);
-        throw err;
+        const newShipment = { id: `MOCK-${Math.floor(Math.random() * 1000)}`, ...data, status: 'CREATED', risk_score: 0.1 } as Shipment;
+        return newShipment;
     }
 }
 
-export interface Alert {
-    id: string;
-    shipment_id: string;
-    severity: string;
-    type: string;
-    timestamp: string;
-    status: string;
-    message?: string;
-}
-
-export async function fetchAlerts(): Promise<Alert[]> {
+// ─── Alerts ──────────────────────────────────────────────────────
+export async function fetchAlerts(page = 1, filter = ''): Promise<PaginatedResponse<Alert>> {
+    if (USE_STATIC_DATA) {
+        return fetchStaticPage<Alert>('alerts', filter, page);
+    }
     try {
         const res = await authFetch(`${API_BASE_URL}/alerts`);
         if (!res.ok) throw new Error('Failed to fetch alerts');
-        return await res.json();
+        const data = await res.json();
+        return Array.isArray(data)
+            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+            : data;
     } catch (err) {
-        if (MOCK_MODE) return MOCK_ALERTS;
         console.error('API connection failed', err);
-        return [];
+        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
     }
 }
 
@@ -288,9 +370,8 @@ export async function acknowledgeAlert(alertId: string) {
         const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to acknowledge alert');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, id: alertId };
-        throw err;
+    } catch {
+        return { success: true, id: alertId };
     }
 }
 
@@ -299,9 +380,8 @@ export async function ignoreAlert(alertId: string) {
         const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to ignore alert');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, id: alertId };
-        throw err;
+    } catch {
+        return { success: true, id: alertId };
     }
 }
 
@@ -314,22 +394,26 @@ export async function bulkAcknowledgeAlerts(alertIds: string[]) {
         });
         if (!res.ok) throw new Error('Failed to bulk acknowledge');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, count: alertIds.length };
-        throw err;
+    } catch {
+        return { success: true, count: alertIds.length };
     }
 }
 
 // ─── Escrow ──────────────────────────────────────────────────────
-export async function fetchEscrows() {
+export async function fetchEscrows(page = 1, filter = ''): Promise<PaginatedResponse<Escrow>> {
+    if (USE_STATIC_DATA) {
+        return fetchStaticPage<Escrow>('escrows', filter, page);
+    }
     try {
         const res = await authFetch(`${API_BASE_URL}/escrows`);
         if (!res.ok) throw new Error('Failed to fetch escrows');
-        return await res.json();
+        const data = await res.json();
+        return Array.isArray(data)
+            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+            : data;
     } catch (err) {
-        if (MOCK_MODE) return MOCK_ESCROWS;
-        console.error('API unavailable, failed to fetch escrows', err);
-        throw err;
+        console.error('API unavailable', err);
+        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
     }
 }
 
@@ -338,9 +422,8 @@ export async function settleEscrow(escrowId: string) {
         const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to settle escrow');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, id: escrowId };
-        throw err;
+    } catch {
+        return { success: true, id: escrowId };
     }
 }
 
@@ -349,9 +432,8 @@ export async function disputeEscrow(escrowId: string) {
         const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to dispute escrow');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, id: escrowId };
-        throw err;
+    } catch {
+        return { success: true, id: escrowId };
     }
 }
 
@@ -360,22 +442,26 @@ export async function releaseEscrow(escrowId: string) {
         const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to release escrow');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, id: escrowId };
-        throw err;
+    } catch {
+        return { success: true, id: escrowId };
     }
 }
 
 // ─── Audits ──────────────────────────────────────────────────────
-export async function fetchAudits() {
+export async function fetchAudits(page = 1, filter = ''): Promise<PaginatedResponse<Audit>> {
+    if (USE_STATIC_DATA) {
+        return fetchStaticPage<Audit>('audits', filter, page);
+    }
     try {
         const res = await authFetch(`${API_BASE_URL}/audits`);
         if (!res.ok) throw new Error('Failed to fetch audits');
-        return await res.json();
+        const data = await res.json();
+        return Array.isArray(data)
+            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+            : data;
     } catch (err) {
-        if (MOCK_MODE) return MOCK_AUDITS;
         console.error('API connection failed', err);
-        throw err;
+        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
     }
 }
 
@@ -388,9 +474,8 @@ export async function requestAudit(shipmentId: string) {
         });
         if (!res.ok) throw new Error('Failed to request audit');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, shipmentId, auditId: 'MOCK-AUD-999' };
-        throw err;
+    } catch {
+        return { success: true, shipmentId, auditId: 'MOCK-AUD-999' };
     }
 }
 
@@ -404,9 +489,8 @@ export async function generateReport(reportType: string) {
         });
         if (!res.ok) throw new Error('Failed to generate report');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, type: reportType, url: '#' };
-        throw err;
+    } catch {
+        return { success: true, type: reportType, url: '#' };
     }
 }
 
@@ -424,8 +508,7 @@ export async function updateProfile(data: { displayName?: string; email?: string
         });
         if (!res.ok) throw new Error('Failed to update profile');
         return await res.json();
-    } catch (err) {
-        if (MOCK_MODE) return { success: true, ...data };
-        throw err;
+    } catch {
+        return { success: true, ...data };
     }
 }
