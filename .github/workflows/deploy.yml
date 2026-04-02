@@ -1,0 +1,78 @@
+name: "Build & Deploy Microservices"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build & Push Images to ECR
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: 
+          - auth-service
+          - user-service
+          - shipment-service
+          - iot-ingestion-service
+          - ml_service 
+          - alert_service
+          - escrow-service
+          - audit_reporting_service
+          - crypto-service
+      fail-fast: false
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: origin-staging-${{ matrix.service }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # The directory names have underscores in some places, but the service / ECR name has hyphens
+          DIR_NAME=${{ matrix.service }}
+          
+          # Handle directory naming mismatches
+          if [ "$DIR_NAME" == "ml_service" ]; then
+            REPO_NAME="ml-service"
+          elif [ "$DIR_NAME" == "alert_service" ]; then
+            REPO_NAME="alert-service"
+          elif [ "$DIR_NAME" == "audit_reporting_service" ]; then
+            REPO_NAME="audit-reporting-service"
+          else
+            REPO_NAME=$DIR_NAME
+          fi
+          
+          echo "Building $DIR_NAME for repo origin-staging-$REPO_NAME"
+          
+          docker build -t $ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG ./services/$DIR_NAME
+          docker push $ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG
+          
+          # Also tag as latest
+          docker tag $ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG $ECR_REGISTRY/origin-staging-$REPO_NAME:latest
+          docker push $ECR_REGISTRY/origin-staging-$REPO_NAME:latest
