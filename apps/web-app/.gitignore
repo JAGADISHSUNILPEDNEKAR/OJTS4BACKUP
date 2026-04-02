@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated dataset (built from CSV at build time)
+/public/data/
+/src/data/
