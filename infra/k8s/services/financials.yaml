@@ -1,0 +1,132 @@
+# Escrow Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: escrow-service
+  labels:
+    app: escrow-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: escrow-service
+  template:
+    metadata:
+      labels:
+        app: escrow-service
+    spec:
+      containers:
+      - name: escrow-service
+        image: origin-staging-escrow-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: origin-shared-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: origin-db-secrets
+              key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: escrow-service
+spec:
+  selector:
+    app: escrow-service
+  ports:
+  - port: 80
+    targetPort: 8000
+
+---
+# Audit & Reporting Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-reporting-service
+  labels:
+    app: audit-reporting-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-reporting-service
+  template:
+    metadata:
+      labels:
+        app: audit-reporting-service
+    spec:
+      containers:
+      - name: audit-reporting-service
+        image: origin-staging-audit-reporting-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: origin-shared-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: origin-db-secrets
+              key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-reporting-service
+spec:
+  selector:
+    app: audit-reporting-service
+  ports:
+  - port: 80
+    targetPort: 8000
+
+---
+# Crypto Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-service
+  labels:
+    app: crypto-service
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: crypto-service
+  template:
+    metadata:
+      labels:
+        app: crypto-service
+    spec:
+      containers:
+      - name: crypto-service
+        image: origin-staging-crypto-service:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: origin-shared-config
+        env:
+        - name: BITCOIN_RPC_URL
+          valueFrom:
+            secretKeyRef:
+              name: origin-bitcoin-secrets
+              key: rpc-url
+        - name: BITCOIN_RPC_USER
+          valueFrom:
+            secretKeyRef:
+              name: origin-bitcoin-secrets
+              key: rpc-user
+        - name: BITCOIN_RPC_PASS
+          valueFrom:
+            secretKeyRef:
+              name: origin-bitcoin-secrets
+              key: rpc-pass
