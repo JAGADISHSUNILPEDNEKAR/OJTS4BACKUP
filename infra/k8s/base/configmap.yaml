@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: origin-shared-config
+  namespace: default
+data:
+  ENVIRONMENT: "staging"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-cluster.origin-system.svc.cluster.local:9092"
+  REDIS_URL: "redis://origin-staging-redis.local:6379"
+  # DB URL will come from a Secret, not ConfigMap. This is a placeholder for non-sensitive shared config.
+  LOG_LEVEL: "INFO"
