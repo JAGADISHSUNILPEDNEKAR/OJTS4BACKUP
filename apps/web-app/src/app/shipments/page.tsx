@@ -1,30 +1,70 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, Shipment } from '@/lib/api';
+import { fetchShipments, Shipment, PaginatedResponse } from '@/lib/api';
 
 export default function ShipmentsPage() {
-    const [shipments, setShipments] = useState<Shipment[]>([]);
+    const [result, setResult] = useState<PaginatedResponse<Shipment>>({ data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 });
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('All Shipments');
+    const [page, setPage] = useState(1);
 
-    const filters = ['All Shipments', 'In Transit', 'Delivered', 'On Hold', 'Flagged'];
+    const FILTER_MAP: Record<string, string> = {
+        'All Shipments': '',
+        'In Transit': 'IN_TRANSIT',
+        'Delivered': 'DELIVERED',
+        'Delayed': 'DELAYED',
+        'Cancelled': 'CANCELLED',
+    };
+    const filters = Object.keys(FILTER_MAP);
 
-    useEffect(() => {
-        const loadShipments = async () => {
-            setLoading(true);
-            const data = await fetchShipments();
-            setShipments(data);
-            setLoading(false);
-        };
-        loadShipments();
+    const loadShipments = useCallback(async (p: number, filter: string) => {
+        setLoading(true);
+        const data = await fetchShipments(p, FILTER_MAP[filter] || '');
+        setResult(data);
+        setLoading(false);
     }, []);
 
-    const filteredShipments = shipments.filter(shp => {
-        if (activeFilter === 'All Shipments') return true;
-        return shp.status === activeFilter.toUpperCase().replace(' ', '_');
-    });
+    useEffect(() => {
+        loadShipments(page, activeFilter);
+    }, [page, activeFilter, loadShipments]);
+
+    const handleFilterChange = (filter: string) => {
+        setActiveFilter(filter);
+        setPage(1);
+    };
+
+    const handleExport = () => {
+        const csvContent = [
+            'Shipment ID,Origin,Destination,Farmer ID,Status,Risk Score,Date',
+            ...result.data.map(s =>
+                `${s.id},"${s.origin}","${s.destination}",${s.farmer_id},${s.status},${s.risk_score || 0},${s.created_at || ''}`
+            )
+        ].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `shipments_page_${page}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // Page navigation
+    const pageNumbers = (() => {
+        const pages: number[] = [];
+        const total = result.totalPages;
+        const current = result.page;
+        const start = Math.max(1, current - 2);
+        const end = Math.min(total, current + 2);
+        if (start > 1) pages.push(1);
+        if (start > 2) pages.push(-1); // ellipsis
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (end < total - 1) pages.push(-2); // ellipsis
+        if (end < total) pages.push(total);
+        return pages;
+    })();
 
     return (
         <DashboardLayout
@@ -37,7 +77,7 @@ export default function ShipmentsPage() {
                         {filters.map(filter => (
                             <button
                                 key={filter}
-                                onClick={() => setActiveFilter(filter)}
+                                onClick={() => handleFilterChange(filter)}
                                 style={{
                                     background: 'none',
                                     border: 'none',
@@ -55,9 +95,9 @@ export default function ShipmentsPage() {
                         ))}
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }}>
+                        <button className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '0.5rem 0.75rem' }} onClick={handleExport}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            Export Ledger
+                            Export Page
                         </button>
                     </div>
                 </div>
@@ -71,14 +111,16 @@ export default function ShipmentsPage() {
                                 <th>Client Entity</th>
                                 <th>Status</th>
                                 <th>Risk Score</th>
-                                <th>Last Updated</th>
-                                <th>Actions</th>
+                                <th>Date</th>
+                                <th>Category</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredShipments.map((shp, i) => (
+                            {loading ? (
+                                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading shipments...</td></tr>
+                            ) : result.data.map((shp, i) => (
                                 <tr key={i}>
-                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{shp.id.substring(0, 8)}</td>
+                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{shp.id}</td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontWeight: 600 }}>{shp.origin || 'Unknown'}</span>
@@ -86,9 +128,9 @@ export default function ShipmentsPage() {
                                             <span style={{ color: 'var(--text-muted)' }}>{shp.destination}</span>
                                         </div>
                                     </td>
-                                    <td style={{ fontWeight: 500 }}>{shp.farmer_id.substring(0, 8)}</td>
+                                    <td style={{ fontWeight: 500 }}>{shp.farmer_id}</td>
                                     <td>
-                                        <span className={`badge ${shp.status === 'DELIVERED' ? 'badge-success' : shp.status === 'ON_HOLD' ? 'badge-danger' : 'badge-primary'}`}>
+                                        <span className={`badge ${shp.status === 'DELIVERED' ? 'badge-success' : shp.status === 'DELAYED' ? 'badge-danger' : shp.status === 'CANCELLED' ? 'badge-warning' : 'badge-primary'}`}>
                                             {shp.status}
                                         </span>
                                     </td>
@@ -100,18 +142,16 @@ export default function ShipmentsPage() {
                                             <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{((shp.risk_score || 0) * 100).toFixed(1)}%</span>
                                         </div>
                                     </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{new Date().toLocaleDateString()}</td>
-                                    <td>
-                                        <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                                        </button>
+                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                        {shp.created_at ? new Date(shp.created_at).toLocaleDateString() : '—'}
                                     </td>
+                                    <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{shp.category || '—'}</td>
                                 </tr>
                             ))}
-                            {filteredShipments.length === 0 && (
+                            {!loading && result.data.length === 0 && (
                                 <tr>
                                     <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                                        {loading ? 'Loading shipments...' : 'No shipments found matching the criteria.'}
+                                        No shipments found matching the criteria.
                                     </td>
                                 </tr>
                             )}
@@ -119,11 +159,42 @@ export default function ShipmentsPage() {
                     </table>
                 </div>
 
+                {/* Pagination Controls */}
                 <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>Showing {filteredShipments.length} of {shipments.length} shipments</p>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>Previous</button>
-                        <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>Next</button>
+                    <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>
+                        Showing {((result.page - 1) * result.pageSize) + 1}–{Math.min(result.page * result.pageSize, result.total)} of <strong>{result.total.toLocaleString()}</strong> shipments
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                        <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={result.page <= 1}
+                        >
+                            ← Prev
+                        </button>
+                        {pageNumbers.map((p, i) =>
+                            p < 0 ? (
+                                <span key={i} style={{ padding: '0 0.25rem', color: 'var(--text-muted)' }}>…</span>
+                            ) : (
+                                <button
+                                    key={i}
+                                    className={`btn ${p === result.page ? 'btn-primary' : 'btn-outline'}`}
+                                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem', minWidth: '2rem' }}
+                                    onClick={() => setPage(p)}
+                                >
+                                    {p}
+                                </button>
+                            )
+                        )}
+                        <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                            onClick={() => setPage(p => Math.min(result.totalPages, p + 1))}
+                            disabled={result.page >= result.totalPages}
+                        >
+                            Next →
+                        </button>
                     </div>
                 </div>
             </div>
