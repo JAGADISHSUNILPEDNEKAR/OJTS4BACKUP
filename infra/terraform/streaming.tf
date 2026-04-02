@@ -8,7 +8,7 @@ resource "aws_msk_cluster" "kafka" {
     instance_type   = "kafka.m5.large"
     client_subnets  = module.vpc.private_subnets
     security_groups = [aws_security_group.kafka_sg.id]
-    
+
     storage_info {
       ebs_storage_info {
         volume_size = 100
