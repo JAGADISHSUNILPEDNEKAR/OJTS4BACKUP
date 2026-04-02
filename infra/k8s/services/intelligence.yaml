@@ -1,0 +1,96 @@
+# ML Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-service
+  labels:
+    app: ml-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-service
+  template:
+    metadata:
+      labels:
+        app: ml-service
+    spec:
+      # Ensure ML model runs on our specialized Spot instances
+      nodeSelector:
+        workload: "machine-learning"
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "machine-learning"
+        effect: "NoSchedule"
+      containers:
+      - name: ml-service
+        image: origin-staging-ml-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: origin-shared-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: origin-db-secrets
+              key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-service
+spec:
+  selector:
+    app: ml-service
+  ports:
+  - port: 80
+    targetPort: 8000
+
+---
+# Alert Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-service
+  labels:
+    app: alert-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alert-service
+  template:
+    metadata:
+      labels:
+        app: alert-service
+    spec:
+      containers:
+      - name: alert-service
+        image: origin-staging-alert-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: origin-shared-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: origin-db-secrets
+              key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-service
+spec:
+  selector:
+    app: alert-service
+  ports:
+  - port: 80
+    targetPort: 8000
