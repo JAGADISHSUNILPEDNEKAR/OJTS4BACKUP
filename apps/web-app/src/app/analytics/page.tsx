@@ -75,7 +75,7 @@ export default function AnalyticsPage() {
             title="Predictive Analytics & Intelligence"
             description="High-fidelity risk modeling and global supply chain intelligence."
         >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Dataset Records', value: stats ? fmt(stats.totalShipments) : '—', change: '100%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
                     { label: 'Anomalies Detected', value: stats ? fmt(stats.totalAlerts) : '—', change: `${stats ? ((stats.criticalAlerts / stats.totalAlerts) * 100).toFixed(0) : 0}% critical`, icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
@@ -94,7 +94,7 @@ export default function AnalyticsPage() {
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                 {/* Status Distribution Chart */}
                 <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
             {/* Top Categories */}
             <div className="card" style={{ marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Top Product Categories</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
                     {stats?.topCategories.map((cat, i) => (
                         <div key={i} style={{ textAlign: 'center', padding: '1rem', background: 'var(--bg-primary)', borderRadius: '8px' }}>
                             <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--primary)' }}>{cat.count.toLocaleString()}</p>

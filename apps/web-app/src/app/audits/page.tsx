@@ -91,7 +91,7 @@ export default function AuditsPage() {
             description="Immutable audit logs and compliance reporting for regulatory oversight."
         >
             {/* Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Total Audits', value: stats ? stats.totalShipments.toLocaleString() : '—', color: 'var(--primary)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> },
                     { label: 'Passed', value: stats ? stats.passedAudits.toLocaleString() : '—', color: 'var(--secondary)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
@@ -111,7 +111,7 @@ export default function AuditsPage() {
             </div>
 
             {/* Action Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {Object.keys(FILTER_MAP).map(filter => (
                         <button
@@ -191,7 +191,7 @@ export default function AuditsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>Page {result.page} of {result.totalPages.toLocaleString()} ({result.total.toLocaleString()} audits)</p>
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
                         <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={result.page <= 1}>← Prev</button>
