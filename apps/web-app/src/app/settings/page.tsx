@@ -65,7 +65,7 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
                 <div className="card">
                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Profile Information</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

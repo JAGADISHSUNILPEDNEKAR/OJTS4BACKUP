@@ -6,7 +6,7 @@ export default function ProfilePage() {
             title="My Profile"
             description="Operational identity and activity history within the Origin ecosystem."
         >
-            <div className="card" style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', padding: '3rem' }}>
+            <div className="card" style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', padding: 'clamp(1.5rem, 4vw, 3rem)' }}>
                 <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 2rem' }}>
                     <div style={{
                         width: '120px',
@@ -26,7 +26,7 @@ export default function ProfilePage() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Alex Rivera</h2>
                 <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: '2rem' }}>Enterprise Admin @ GlobalLogistics</p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)', padding: '1.5rem 0', marginBottom: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)', padding: '1.5rem 0', marginBottom: '2rem' }}>
                     <div>
                         <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>AUTHORIZATIONS</p>
                         <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: '0.25rem 0' }}>L3 Access</p>
