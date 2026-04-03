@@ -96,7 +96,7 @@ export default function ShipmentsPage() {
             title="Shipment Management"
             description="End-to-end telemetry and verification for global asset transfers."
         >
-            <div className="card" style={{ padding: 0, overflow: 'hidden', height: '350px', marginBottom: '1.5rem', position: 'relative' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden', height: 'clamp(250px, 40vw, 350px)', marginBottom: '1.5rem', position: 'relative' }}>
                 <LiveTelemetryMap 
                     shipments={result.data} 
                     stats={stats} 
@@ -106,8 +106,8 @@ export default function ShipmentsPage() {
             </div>
 
             <div className="card" style={{ padding: '0' }}>
-                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                         {filters.map(filter => (
                             <button
                                 key={filter}
@@ -203,7 +203,7 @@ export default function ShipmentsPage() {
                 </div>
 
                 {/* Pagination Controls */}
-                <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <p className="text-muted" style={{ fontSize: '0.75rem', margin: 0 }}>
                         Showing {((result.page - 1) * result.pageSize) + 1}–{Math.min(result.page * result.pageSize, result.total)} of <strong>{result.total.toLocaleString()}</strong> shipments
                     </p>
