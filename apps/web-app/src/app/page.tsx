@@ -89,7 +89,7 @@ export default function Home() {
       description="Real-time supply chain integrity and risk management dashboard."
     >
       {/* Metric Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {metricCards.map((card, i) => (
           <div key={i} className="card animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -107,7 +107,8 @@ export default function Home() {
       </div>
 
       {/* Main Grid: Map & Execution Controls */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <style jsx>{`@media (min-width: 900px) { .dashboard-map-grid { grid-template-columns: 1fr 340px !important; } }`}</style>
+      <div className="dashboard-map-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Live Telemetry Map */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
           <div style={{ height: '400px' }}>
@@ -154,13 +155,14 @@ export default function Home() {
       </div>
 
       {/* Activity & Feed Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '2rem' }}>
+      <style jsx>{`@media (min-width: 900px) { .dashboard-activity-grid { grid-template-columns: 1fr 340px !important; } }`}</style>
+      <div className="dashboard-activity-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '2rem' }}>
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Recent Global Activity</h3>
             <button onClick={() => router.push('/shipments')} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}>View All ({stats ? fmt(stats.totalShipments) : '—'}) ↗</button>
           </div>
-          <table>
+          <div className="table-container"><table>
             <thead>
               <tr>
                 <th>Identifier</th>
@@ -211,7 +213,7 @@ export default function Home() {
                 </tr>
               )}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         <div className="card">
@@ -240,7 +242,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Shortcuts */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
         {bottomShortcuts.map((item, i) => (
           <div key={i} onClick={() => router.push(item.href)} className="card" style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1.25rem', cursor: 'pointer' }}>
             <div style={{ color: 'var(--text-muted)' }}>{item.icon}</div>
