@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getCurrentUser } from '@/lib/api';
 
-export default function Sidebar() {
+interface SidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     const pathname = usePathname();
 
     const user = getCurrentUser();
@@ -28,8 +33,13 @@ export default function Sidebar() {
         { name: 'Sign Out', href: '/logout', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> },
     ];
 
+    const handleLinkClick = () => {
+        // Close sidebar on mobile when a link is clicked
+        if (onClose) onClose();
+    };
+
     return (
-        <aside style={{
+        <aside className={`sidebar ${isOpen ? 'open' : ''}`} style={{
             background: 'var(--bg-surface)',
             borderRight: '1px solid var(--border-light)',
             display: 'flex',
@@ -38,29 +48,45 @@ export default function Sidebar() {
             position: 'sticky',
             top: 0
         }}>
-            <div style={{ padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div style={{
-                    width: '32px',
-                    height: '32px',
-                    background: 'var(--primary)',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="21 8 21 21 3 21 3 8"></polyline>
-                        <rect x="1" y="3" width="22" height="5"></rect>
-                    </svg>
+            <div style={{ padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        background: 'var(--primary)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                            <rect x="1" y="3" width="22" height="5"></rect>
+                        </svg>
+                    </div>
+                    <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Origin</h1>
                 </div>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Origin</h1>
+                {/* Close button for mobile */}
+                {onClose && (
+                    <button
+                        className="mobile-menu-btn"
+                        onClick={onClose}
+                        aria-label="Close menu"
+                        style={{ display: 'flex' }}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                )}
             </div>
 
             <nav style={{ padding: '0 1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {menuItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
-                        <Link key={item.name} href={item.href} style={{
+                        <Link key={item.name} href={item.href} onClick={handleLinkClick} style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.75rem',
@@ -82,7 +108,7 @@ export default function Sidebar() {
 
             <div style={{ padding: '1rem', borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {bottomItems.map((item) => (
-                    <Link key={item.name} href={item.href} style={{
+                    <Link key={item.name} href={item.href} onClick={handleLinkClick} style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.75rem',

@@ -19,6 +19,7 @@ export default function DashboardLayout({
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [authChecked, setAuthChecked] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         if (!isAuthenticated()) {
@@ -30,6 +31,27 @@ export default function DashboardLayout({
             return () => clearTimeout(timer);
         }
     }, [router]);
+
+    // Close sidebar on route change / resize
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth > 1024) {
+                setSidebarOpen(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Prevent body scroll when sidebar is open on mobile
+    useEffect(() => {
+        if (sidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [sidebarOpen]);
 
     if (!authChecked) {
         return (
@@ -54,39 +76,60 @@ export default function DashboardLayout({
 
     return (
         <div className="dashboard-layout">
-            <Sidebar />
+            {/* Mobile sidebar overlay */}
+            <div
+                className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            />
+
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
             <main style={{ background: 'var(--bg-primary)', overflowY: 'auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <header style={{
                     background: 'var(--bg-surface)',
                     borderBottom: '1px solid var(--border-light)',
-                    padding: '0.75rem 2.5rem',
+                    padding: '0.75rem 1.25rem',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     position: 'sticky',
                     top: 0,
-                    zIndex: 10
+                    zIndex: 10,
+                    gap: '0.75rem'
                 }}>
-                    <div className="input-group" style={{ width: '400px' }}>
+                    {/* Hamburger menu button (visible on mobile via CSS) */}
+                    <button
+                        className="mobile-menu-btn"
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+
+                    <div className="input-group hide-mobile" style={{ width: '400px', maxWidth: '100%' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         <input type="text" placeholder="Search shipments, assets, or audits..." />
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                        <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', color: 'var(--text-muted)' }}>
                             <div onClick={() => router.push('/alerts')} style={{ position: 'relative', cursor: 'pointer' }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                                 <div style={{ position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', background: 'var(--danger)', borderRadius: '50%', border: '2px solid white' }}></div>
                             </div>
-                            <div style={{ cursor: 'pointer' }} onClick={() => alert('Help center coming soon!')}>
+                            <div className="hide-mobile" style={{ cursor: 'pointer' }} onClick={() => alert('Help center coming soon!')}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             </div>
                         </div>
 
-                        <div style={{ borderLeft: '1px solid var(--border-light)', height: '32px', margin: '0 0.5rem' }}></div>
+                        <div className="hide-mobile" style={{ borderLeft: '1px solid var(--border-light)', height: '32px', margin: '0 0.25rem' }}></div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ textAlign: 'right' }}>
+                            <div className="hide-mobile" style={{ textAlign: 'right' }}>
                                 <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-main)' }}>
                                     {getCurrentUser()?.display_name || getCurrentUser()?.email || 'User'}
                                 </p>
@@ -96,8 +139,8 @@ export default function DashboardLayout({
                             </div>
                             <div onClick={() => router.push('/profile')} style={{ position: 'relative', cursor: 'pointer' }}>
                                 <div style={{
-                                    width: '40px',
-                                    height: '40px',
+                                    width: '36px',
+                                    height: '36px',
                                     borderRadius: '50%',
                                     background: '#e2e8f0',
                                     backgroundImage: `url("https://i.pravatar.cc/150?u=${getCurrentUser()?.email || 'user@origin.io'}")`,
@@ -109,15 +152,15 @@ export default function DashboardLayout({
                     </div>
                 </header>
 
-                <div style={{ padding: '2rem 2.5rem', flex: 1 }}>
+                <div style={{ padding: 'clamp(1rem, 3vw, 2.5rem)', flex: 1 }}>
                     {title && (
-                        <div style={{ marginBottom: '2rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                <div>
-                                    <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{title}</h1>
-                                    {description && <p style={{ color: 'var(--text-muted)' }}>{description}</p>}
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                                <div style={{ minWidth: 0 }}>
+                                    <h1 style={{ fontSize: 'clamp(1.25rem, 3vw, 1.875rem)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{title}</h1>
+                                    {description && <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(0.8125rem, 2vw, 1rem)' }}>{description}</p>}
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                     {/* Time Range Dropdown */}
                                     <div style={{ position: 'relative' }}>
                                         <button
@@ -125,7 +168,7 @@ export default function DashboardLayout({
                                             onClick={() => { setShowTimeDropdown(!showTimeDropdown); setShowFilterPanel(false); }}
                                         >
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                            {timeRange}
+                                            <span className="hide-mobile">{timeRange}</span>
                                         </button>
                                         {showTimeDropdown && (
                                             <div style={{
@@ -162,7 +205,7 @@ export default function DashboardLayout({
                                         style={{ background: showFilterPanel ? 'var(--bg-hover)' : undefined }}
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                                        Filters
+                                        <span className="hide-mobile">Filters</span>
                                     </button>
 
                                     {/* New Shipment Button */}
@@ -171,7 +214,7 @@ export default function DashboardLayout({
                                         onClick={() => router.push('/shipments')}
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                        New Shipment
+                                        <span className="hide-mobile">New Shipment</span>
                                     </button>
                                 </div>
                             </div>
@@ -182,7 +225,7 @@ export default function DashboardLayout({
                                     marginTop: '1rem', padding: '1.25rem', background: 'var(--bg-surface)',
                                     border: '1px solid var(--border-light)', borderRadius: '10px',
                                     boxShadow: 'var(--shadow-sm)',
-                                    display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap'
+                                    display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'
                                 }}>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>FILTER BY:</span>
                                     {['All', 'Critical Risk', 'Active Only', 'Pending Audit', 'Disputed'].map((filter) => (
