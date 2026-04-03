@@ -89,7 +89,7 @@ export default function Home() {
       description="Real-time supply chain integrity and risk management dashboard."
     >
       {/* Metric Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {metricCards.map((card, i) => (
           <div key={i} className="card animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -168,8 +168,8 @@ export default function Home() {
                 <th>Identifier</th>
                 <th>Origin → Destination</th>
                 <th>Status</th>
-                <th>ML Risk</th>
-                <th>Date</th>
+                <th className="hide-on-mobile">ML Risk</th>
+                <th className="hide-on-mobile">Date</th>
               </tr>
             </thead>
             <tbody>
@@ -194,7 +194,7 @@ export default function Home() {
                     <span style={{ color: 'var(--text-muted)' }}>{row.destination?.split(',')[0]}</span>
                   </td>
                   <td><span className={`badge ${row.status === 'DELAYED' ? 'badge-danger' : row.status === 'CREATED' ? 'badge-warning' : row.status === 'DELIVERED' ? 'badge-success' : 'badge-primary'}`}>{row.status}</span></td>
-                  <td>
+                  <td className="hide-on-mobile">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', width: '60px' }}>
                         <div style={{ height: '100%', width: `${(row.risk_score || 0) * 100}%`, background: (row.risk_score || 0) > 0.8 ? 'var(--danger)' : (row.risk_score || 0) > 0.4 ? 'var(--warning)' : 'var(--secondary)', borderRadius: '2px' }}></div>
@@ -242,7 +242,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Shortcuts */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
         {bottomShortcuts.map((item, i) => (
           <div key={i} onClick={() => router.push(item.href)} className="card" style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1.25rem', cursor: 'pointer' }}>
             <div style={{ color: 'var(--text-muted)' }}>{item.icon}</div>

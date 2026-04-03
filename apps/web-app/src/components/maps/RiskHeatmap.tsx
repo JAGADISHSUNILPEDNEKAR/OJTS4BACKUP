@@ -179,7 +179,7 @@ export default function RiskHeatmap({ stats, zoomLevel, onZoomIn, onZoomOut }: R
       <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
 
       {/* Top-right: Stats overlay */}
-      <div style={{
+      <div className="map-overlay-stats" style={{
         position: 'absolute', top: '1rem', right: '1rem', zIndex: 1000,
         background: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(12px)',
         padding: '0.75rem 1rem', borderRadius: '10px',
@@ -206,7 +206,7 @@ export default function RiskHeatmap({ stats, zoomLevel, onZoomIn, onZoomOut }: R
       </div>
 
       {/* Bottom-left: Top regions list */}
-      <div style={{
+      <div className="map-overlay-regions" style={{
         position: 'absolute', bottom: '1rem', left: '1rem', zIndex: 1000,
         background: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(12px)',
         padding: '0.75rem 1rem', borderRadius: '10px',
@@ -231,7 +231,7 @@ export default function RiskHeatmap({ stats, zoomLevel, onZoomIn, onZoomOut }: R
       </div>
 
       {/* Bottom-right: Zoom controls */}
-      <div style={{
+      <div className="map-overlay-zoom" style={{
         position: 'absolute', bottom: '1rem', right: '1rem', zIndex: 1000,
         display: 'flex', gap: '0.5rem',
       }}>
@@ -270,7 +270,7 @@ export default function RiskHeatmap({ stats, zoomLevel, onZoomIn, onZoomOut }: R
       </div>
 
       {/* Risk level legend */}
-      <div style={{
+      <div className="map-overlay-legend" style={{
         position: 'absolute', top: '1rem', left: '1rem', zIndex: 1000,
         background: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(12px)',
         padding: '0.6rem 0.8rem', borderRadius: '8px',
@@ -304,6 +304,25 @@ export default function RiskHeatmap({ stats, zoomLevel, onZoomIn, onZoomOut }: R
         }
         .heatmap-tooltip::before {
           border-top-color: rgba(15, 23, 42, 0.92) !important;
+        }
+
+        @media (max-width: 768px) {
+          .map-overlay-stats { display: none !important; }
+          .map-overlay-regions { display: none !important; }
+          .map-overlay-legend { 
+            top: auto !important; 
+            bottom: 4rem !important; 
+            left: 0.5rem !important;
+            padding: 0.4rem 0.6rem !important;
+          }
+          .map-overlay-zoom {
+            bottom: 0.5rem !important;
+            right: 0.5rem !important;
+          }
+          .map-overlay-zoom button {
+            padding: 0.4rem 0.8rem !important;
+            font-size: 0.65rem !important;
+          }
         }
       `}</style>
     </div>

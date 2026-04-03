@@ -91,6 +91,14 @@ a:hover {
   padding: 0 2rem;
 }
 
+.sidebar {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: transform var(--transition-smooth), width var(--transition-smooth);
+}
+
 .dashboard-layout {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -186,6 +194,18 @@ a:hover {
 .table-container {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+  /* Premium scroll shadow indicators */
+  background: 
+    linear-gradient(to right, white 30%, rgba(255,255,255,0)),
+    linear-gradient(to right, rgba(255,255,255,0), white 70%) 0 100%,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.2), rgba(0,0,0,0)),
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.2), rgba(0,0,0,0)) 0 100%;
+  background-repeat: no-repeat;
+  background-color: white;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 
 table {
@@ -330,6 +350,7 @@ tr:last-child td {
 
 @media (max-width: 1024px) {
   .dashboard-layout {
+    display: block; /* Switch from grid to block to avoid grid gaps */
     grid-template-columns: 1fr;
   }
 
@@ -338,10 +359,10 @@ tr:last-child td {
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
     width: 280px;
+    height: 100vh;
     transform: translateX(-100%);
-    transition: transform var(--transition-smooth);
     box-shadow: var(--shadow-lg);
   }
 
@@ -363,7 +384,7 @@ tr:last-child td {
 /* ═══════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  .hide-mobile {
+  .hide-mobile, .hide-on-mobile {
     display: none !important;
   }
 
@@ -376,7 +397,7 @@ tr:last-child td {
   }
 
   .card {
-    padding: 1rem;
+    padding: 1rem 0.875rem;
   }
 
   th, td {
@@ -401,8 +422,8 @@ tr:last-child td {
 
 @media (max-width: 480px) {
   .card {
-    padding: 0.875rem;
-    border-radius: 10px;
+    padding: 0.75rem;
+    border-radius: 8px;
   }
 
   .btn {

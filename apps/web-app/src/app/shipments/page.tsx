@@ -142,11 +142,11 @@ export default function ShipmentsPage() {
                             <tr>
                                 <th>Shipment ID</th>
                                 <th>Origin / Destination</th>
-                                <th>Client Entity</th>
+                                <th className="hide-on-mobile">Client Entity</th>
                                 <th>Status</th>
                                 <th>Risk Score</th>
-                                <th>Date</th>
-                                <th>Category</th>
+                                <th className="hide-on-mobile">Date</th>
+                                <th className="hide-on-mobile">Category</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -167,11 +167,11 @@ export default function ShipmentsPage() {
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontWeight: 600 }}>{shp.origin || 'Unknown'}</span>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                            <span style={{ color: 'var(--text-muted)' }}>{shp.destination}</span>
+                                            <svg className="hide-on-mobile" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                            <span className="hide-on-mobile" style={{ color: 'var(--text-muted)' }}>{shp.destination}</span>
                                         </div>
                                     </td>
-                                    <td style={{ fontWeight: 500 }}>{shp.farmer_id}</td>
+                                    <td className="hide-on-mobile" style={{ fontWeight: 500 }}>{shp.farmer_id}</td>
                                     <td>
                                         <span className={`badge ${shp.status === 'DELIVERED' ? 'badge-success' : shp.status === 'DELAYED' ? 'badge-danger' : shp.status === 'CANCELLED' ? 'badge-warning' : 'badge-primary'}`}>
                                             {shp.status}
@@ -185,10 +185,10 @@ export default function ShipmentsPage() {
                                             <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{((shp.risk_score || 0) * 100).toFixed(1)}%</span>
                                         </div>
                                     </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                    <td className="hide-on-mobile" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                                         {shp.created_at ? new Date(shp.created_at).toLocaleDateString() : '—'}
                                     </td>
-                                    <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{shp.category || '—'}</td>
+                                    <td className="hide-on-mobile" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{shp.category || '—'}</td>
                                 </tr>
                             ))}
                             {!loading && result.data.length === 0 && (

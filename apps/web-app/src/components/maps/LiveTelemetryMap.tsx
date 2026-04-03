@@ -227,7 +227,7 @@ export default function LiveTelemetryMap({ shipments, stats, selectedShipment, o
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Top UI Overlay */}
-      <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div className="map-overlay-controls" style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <div style={{
           background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)',
           padding: '0.75rem 1rem', borderRadius: '10px',
@@ -265,7 +265,7 @@ export default function LiveTelemetryMap({ shipments, stats, selectedShipment, o
 
       {/* Selected Shipment Telemetry Card */}
       {selectedShipment && telemetry && (
-        <div style={{
+        <div className="map-overlay-telemetry" style={{
           position: 'absolute', top: '1rem', right: '3.5rem', width: '280px', zIndex: 1000,
           background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(16px)',
           padding: '1.25rem', borderRadius: '12px',
@@ -325,7 +325,7 @@ export default function LiveTelemetryMap({ shipments, stats, selectedShipment, o
 
       {/* Legend (only show when not selected) */}
       {!selectedShipment && (
-        <div style={{
+        <div className="map-overlay-legend" style={{
           position: 'absolute', bottom: '1rem', right: '1rem', zIndex: 1000,
           background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)',
           padding: '0.6rem 0.8rem', borderRadius: '8px',
@@ -351,6 +351,21 @@ export default function LiveTelemetryMap({ shipments, stats, selectedShipment, o
         .pulse-marker { animation: markerPulse 2s ease-in-out infinite; }
         @keyframes markerPulse { 0% { stroke-opacity: 1; fill-opacity: 0.5; } 50% { stroke-opacity: 0.3; fill-opacity: 0.15; } 100% { stroke-opacity: 1; fill-opacity: 0.5; } }
         .leaflet-container { background: #0f172a !important; }
+
+        @media (max-width: 768px) {
+          .map-overlay-telemetry { display: none !important; } /* Hide bulky feed on mobile */
+          .map-overlay-controls { 
+            top: 0.5rem !important; 
+            left: 0.5rem !important; 
+            width: calc(100% - 1rem);
+          }
+          .map-overlay-legend {
+            bottom: 0.5rem !important;
+            right: 0.5rem !important;
+            padding: 0.4rem 0.6rem !important;
+          }
+          .map-overlay-legend p { font-size: 0.5rem !important; }
+        }
       `}</style>
     </div>
   );

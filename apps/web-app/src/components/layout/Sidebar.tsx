@@ -43,10 +43,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             background: 'var(--bg-surface)',
             borderRight: '1px solid var(--border-light)',
             display: 'flex',
-            flexDirection: 'column',
-            height: '100vh',
-            position: 'sticky',
-            top: 0
+            flexDirection: 'column'
         }}>
             <div style={{ padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

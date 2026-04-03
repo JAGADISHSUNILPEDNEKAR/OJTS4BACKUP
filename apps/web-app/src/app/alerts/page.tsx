@@ -88,7 +88,7 @@ export default function AlertsPage() {
             description="Centralized command for anomaly resolution and manual intervention."
         >
             {/* Quick Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Critical Alerts', value: stats ? stats.criticalAlerts.toLocaleString() : '—', color: 'var(--danger)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg> },
                     { label: 'Warning Alerts', value: stats ? stats.warningAlerts.toLocaleString() : '—', color: 'var(--warning)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> },
@@ -134,11 +134,11 @@ export default function AlertsPage() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Alert ID</th>
+                                <th className="hide-on-mobile">Alert ID</th>
                                 <th>Severity</th>
                                 <th>Type</th>
-                                <th>Shipment</th>
-                                <th>Message</th>
+                                <th className="hide-on-mobile">Shipment</th>
+                                <th className="hide-on-mobile">Message</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -148,15 +148,15 @@ export default function AlertsPage() {
                                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading alerts...</td></tr>
                             ) : result.data.map((alertItem, i) => (
                                 <tr key={i}>
-                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{alertItem.id}</td>
+                                    <td className="hide-on-mobile" style={{ fontWeight: 800, color: 'var(--primary)' }}>{alertItem.id}</td>
                                     <td>
                                         <span className={`badge ${alertItem.severity === 'CRITICAL' ? 'badge-danger' : alertItem.severity === 'WARNING' ? 'badge-warning' : 'badge-info'}`}>
                                             {alertItem.severity}
                                         </span>
                                     </td>
                                     <td style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{alertItem.type?.replace(/_/g, ' ')}</td>
-                                    <td style={{ fontWeight: 500, fontSize: '0.8125rem' }}>{alertItem.shipment_id}</td>
-                                    <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alertItem.message}</td>
+                                    <td className="hide-on-mobile" style={{ fontWeight: 500, fontSize: '0.8125rem' }}>{alertItem.shipment_id}</td>
+                                    <td className="hide-on-mobile" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alertItem.message}</td>
                                     <td>
                                         <span className={`badge ${alertItem.status === 'OPEN' ? 'badge-danger' : alertItem.status === 'Acknowledged' ? 'badge-primary' : 'badge-success'}`}>
                                             {alertItem.status}

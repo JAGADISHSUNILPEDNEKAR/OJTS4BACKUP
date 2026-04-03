@@ -152,13 +152,13 @@ export default function DashboardLayout({
                     </div>
                 </header>
 
-                <div style={{ padding: 'clamp(1rem, 3vw, 2.5rem)', flex: 1 }}>
+                <div style={{ padding: 'clamp(0.75rem, 2vw, 2.5rem)', flex: 1 }}>
                     {title && (
                         <div style={{ marginBottom: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                                 <div style={{ minWidth: 0 }}>
-                                    <h1 style={{ fontSize: 'clamp(1.25rem, 3vw, 1.875rem)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{title}</h1>
-                                    {description && <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(0.8125rem, 2vw, 1rem)' }}>{description}</p>}
+                                    <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.875rem)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{title}</h1>
+                                    {description && <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>{description}</p>}
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                     {/* Time Range Dropdown */}

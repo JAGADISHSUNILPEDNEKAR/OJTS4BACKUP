@@ -91,7 +91,7 @@ export default function AuditsPage() {
             description="Immutable audit logs and compliance reporting for regulatory oversight."
         >
             {/* Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Total Audits', value: stats ? stats.totalShipments.toLocaleString() : '—', color: 'var(--primary)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> },
                     { label: 'Passed', value: stats ? stats.passedAudits.toLocaleString() : '—', color: 'var(--secondary)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
@@ -141,13 +141,13 @@ export default function AuditsPage() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Audit ID</th>
+                                <th className="hide-on-mobile">Audit ID</th>
                                 <th>Entity</th>
                                 <th>Type</th>
-                                <th>Auditor</th>
+                                <th className="hide-on-mobile">Auditor</th>
                                 <th>Status</th>
                                 <th>Findings</th>
-                                <th>Timestamp</th>
+                                <th className="hide-on-mobile">Timestamp</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -156,10 +156,10 @@ export default function AuditsPage() {
                                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading audits...</td></tr>
                             ) : result.data.map((audit, i) => (
                                 <tr key={i}>
-                                    <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{audit.id}</td>
+                                    <td className="hide-on-mobile" style={{ fontWeight: 800, color: 'var(--primary)' }}>{audit.id}</td>
                                     <td style={{ fontWeight: 600 }}>{audit.entity}</td>
                                     <td>{audit.type}</td>
-                                    <td>
+                                    <td className="hide-on-mobile">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#e2e8f0' }}></div>
                                             <span style={{ fontSize: '0.8125rem' }}>{audit.auditor}</span>
@@ -173,7 +173,7 @@ export default function AuditsPage() {
                                     <td style={{ fontWeight: 700, color: audit.findings > 0 ? 'var(--danger)' : 'var(--secondary)' }}>
                                         {audit.findings}
                                     </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                    <td className="hide-on-mobile" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                                         {new Date(audit.timestamp).toLocaleString()}
                                     </td>
                                     <td>
