@@ -512,3 +512,54 @@ export async function updateProfile(data: { displayName?: string; email?: string
         return { success: true, ...data };
     }
 }
+
+// ─── Global Search ────────────────────────────────────────────────
+export interface SearchResults {
+    shipments: Shipment[];
+    alerts: Alert[];
+    audits: Audit[];
+}
+
+/**
+ * Performs a global search across shipments, alerts, and audits.
+ * Scans the first page of each entity for "instant" demo results.
+ */
+export async function searchEntities(query: string): Promise<SearchResults> {
+    const q = query.toLowerCase().trim();
+    if (!q || q.length < 2) return { shipments: [], alerts: [], audits: [] };
+
+    try {
+        // Fetch first page of each for "instant" global search
+        const [shipmentsRes, alertsRes, auditsRes] = await Promise.all([
+            fetchShipments(1),
+            fetchAlerts(1),
+            fetchAudits(1)
+        ]);
+
+        const filterShipment = (s: Shipment) => 
+            s.id.toLowerCase().includes(q) || 
+            s.origin.toLowerCase().includes(q) || 
+            s.destination.toLowerCase().includes(q) ||
+            (typeof s.product === 'string' && s.product.toLowerCase().includes(q));
+
+        const filterAlert = (a: Alert) => 
+            a.id.toLowerCase().includes(q) || 
+            a.type.toLowerCase().includes(q) || 
+            (a.message?.toLowerCase() || '').includes(q);
+
+        const filterAudit = (a: Audit) => 
+            a.id.toLowerCase().includes(q) || 
+            a.entity.toLowerCase().includes(q) || 
+            a.auditor.toLowerCase().includes(q);
+
+        return {
+            shipments: shipmentsRes.data.filter(filterShipment).slice(0, 5),
+            alerts: alertsRes.data.filter(filterAlert).slice(0, 5),
+            audits: auditsRes.data.filter(filterAudit).slice(0, 5),
+        };
+    } catch (err) {
+        console.error('[Search] Error performing global search', err);
+        return { shipments: [], alerts: [], audits: [] };
+    }
+}
+
