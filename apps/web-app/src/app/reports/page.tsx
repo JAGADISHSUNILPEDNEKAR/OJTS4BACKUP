@@ -3,11 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { generateReport, getCurrentUser } from '@/lib/api';
+import { generateReport, getCurrentUser, fetchStats, DatasetStats } from '@/lib/api';
 
 export default function ReportsPage() {
     const router = useRouter();
     const [generating, setGenerating] = useState<string | null>(null);
+    const [stats, setStats] = useState<DatasetStats | null>(null);
+
+    useEffect(() => {
+        async function loadStats() {
+            try {
+                const data = await fetchStats();
+                setStats(data);
+            } catch (err) {
+                console.error("Failed to load stats for reports", err);
+            }
+        }
+        loadStats();
+    }, []);
 
     useEffect(() => {
         const user = getCurrentUser();
