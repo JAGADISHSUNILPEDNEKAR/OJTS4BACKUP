@@ -5,17 +5,24 @@ import { normalizeRole } from '@/lib/permissions';
 import type { UserRole } from '@/lib/roles.config';
 import AdminDashboard from './views/AdminDashboard';
 import FarmerDashboard from './views/FarmerDashboard';
+import LogisticsDashboard from './views/LogisticsDashboard';
+import AuditorDashboard from './views/AuditorDashboard';
+import ConsumerDashboard from './views/ConsumerDashboard';
+import RetailerDashboard from './views/RetailerDashboard';
+import GovernmentDashboard from './views/GovernmentDashboard';
 
 /**
  * Resolves which dashboard view to render based on the current user's role.
- *
- * As new role views are built (Phase 3+), add them to ROLE_VIEW_MAP. Roles
- * not yet mapped fall through to AdminDashboard, which preserves the legacy
- * full-featured dashboard for SUPERADMIN/COMPANY and any unknown role.
+ * Unmapped roles (SUPERADMIN, COMPANY, USER, legacy ADMIN) fall through to
+ * AdminDashboard so existing accounts keep the full-featured view.
  */
 const ROLE_VIEW_MAP: Partial<Record<UserRole, React.ComponentType>> = {
     FARMER: FarmerDashboard,
-    // LOGISTICS, AUDITOR, RETAILER, GOVERNMENT, CONSUMER — added in later sub-phases.
+    LOGISTICS: LogisticsDashboard,
+    AUDITOR: AuditorDashboard,
+    CONSUMER: ConsumerDashboard,
+    RETAILER: RetailerDashboard,
+    GOVERNMENT: GovernmentDashboard,
 };
 
 export default function DashboardFactory() {
