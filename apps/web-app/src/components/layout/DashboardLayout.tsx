@@ -3,15 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
-import { 
-    isAuthenticated, 
-    getCurrentUser, 
-    searchEntities, 
-    SearchResults, 
-    Shipment, 
-    Alert, 
-    Audit 
+import {
+    isAuthenticated,
+    getCurrentUser,
+    searchEntities,
+    SearchResults,
+    Shipment,
+    Alert,
+    Audit
 } from '@/lib/api';
+import { getRoleConfig } from '@/lib/permissions';
 import { useRef } from 'react';
 
 export default function DashboardLayout({
@@ -301,7 +302,7 @@ export default function DashboardLayout({
                                     {getCurrentUser()?.display_name || getCurrentUser()?.email || 'User'}
                                 </p>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                                    {getCurrentUser()?.role === 'ADMIN' ? 'Enterprise Admin' : 'Customer'}
+                                    {getRoleConfig(getCurrentUser()).label}
                                 </p>
                             </div>
                             <div onClick={() => router.push('/profile')} style={{ position: 'relative', cursor: 'pointer' }}>
