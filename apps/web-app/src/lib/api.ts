@@ -84,9 +84,22 @@ export interface Audit {
 }
 
 // ─── Auth Helpers ────────────────────────────────────────────────
+export type UserRoleString =
+    | 'SUPERADMIN'
+    | 'COMPANY'
+    | 'AUDITOR'
+    | 'FARMER'
+    | 'LOGISTICS'
+    | 'RETAILER'
+    | 'GOVERNMENT'
+    | 'CONSUMER'
+    | 'USER'
+    // Legacy values still present in older localStorage sessions
+    | 'ADMIN';
+
 export interface User {
     email: string;
-    role: 'ADMIN' | 'USER' | string;
+    role: UserRoleString | string;
     display_name?: string;
 }
 
@@ -186,6 +199,36 @@ async function fetchStaticPage<T>(entity: string, filter: string, page: number):
     };
 }
 
+/**
+ * Mock-mode role detection used when the backend is unreachable.
+ * Maps an email's local-part prefix or substring to a UserRole. Order matters —
+ * more specific prefixes are checked first. `admin@` keeps mapping to SUPERADMIN
+ * (formerly 'ADMIN') so existing demo logins stay functional.
+ */
+function inferMockRole(email: string): UserRoleString {
+    const local = email.toLowerCase().split('@')[0] || '';
+    if (local.startsWith('superadmin') || local.startsWith('admin')) return 'SUPERADMIN';
+    if (local.startsWith('company')) return 'COMPANY';
+    if (local.startsWith('farmer')) return 'FARMER';
+    if (local.startsWith('logistics')) return 'LOGISTICS';
+    if (local.startsWith('auditor')) return 'AUDITOR';
+    if (local.startsWith('retailer')) return 'RETAILER';
+    if (local.startsWith('government') || local.startsWith('gov')) return 'GOVERNMENT';
+    if (local.startsWith('consumer')) return 'CONSUMER';
+    return 'USER';
+}
+
+const MOCK_ROLE_DISPLAY_NAMES: Partial<Record<UserRoleString, string>> = {
+    SUPERADMIN: 'Alex Rivera',
+    COMPANY: 'Origin Foods Co.',
+    FARMER: 'Priya Patel',
+    LOGISTICS: 'Marcus Chen',
+    AUDITOR: 'Dr. Sarah Klein',
+    RETAILER: 'Whole Harvest Market',
+    GOVERNMENT: 'Inspector Rao',
+    CONSUMER: 'Jamie Lee',
+};
+
 // ─── Auth Endpoints ──────────────────────────────────────────────
 export async function login(email: string, password: string, totpCode?: string) {
     const body: Record<string, string> = { email, password };
@@ -209,14 +252,14 @@ export async function login(email: string, password: string, totpCode?: string) 
         return data;
     } catch (err) {
         console.warn('Backend unreachable, using mock login for dev', err);
-        const role = email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER';
+        const role = inferMockRole(email);
         const mockData = {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
             user: {
                 email,
                 role,
-                display_name: role === 'ADMIN' ? 'Alex Rivera' : email.split('@')[0]
+                display_name: MOCK_ROLE_DISPLAY_NAMES[role] || email.split('@')[0]
             }
         };
         setTokens(mockData.access_token, mockData.refresh_token);
@@ -244,14 +287,14 @@ export async function register(email: string, password: string, role?: string) {
         return data;
     } catch (err) {
         console.warn('Backend unreachable, using mock register for dev', err);
-        const assignedRole = role || (email.toLowerCase().includes('admin') ? 'ADMIN' : 'USER');
+        const assignedRole = (role as UserRoleString) || inferMockRole(email);
         const mockData = {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
             user: {
                 email,
                 role: assignedRole,
-                display_name: email.split('@')[0]
+                display_name: MOCK_ROLE_DISPLAY_NAMES[assignedRole as UserRoleString] || email.split('@')[0]
             }
         };
         setTokens(mockData.access_token, mockData.refresh_token);
