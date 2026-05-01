@@ -18,6 +18,7 @@ class UserRole:
     LOGISTICS = "LOGISTICS"
     RETAILER = "RETAILER"
     GOVERNMENT = "GOVERNMENT"
+    CONSUMER = "CONSUMER"
     USER = "USER"
 
 async def get_current_user_from_token(token: str = Depends(oauth2_scheme)) -> CurrentUser:
