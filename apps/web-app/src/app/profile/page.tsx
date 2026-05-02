@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { getCurrentUser } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 import { getRoleConfig } from '@/lib/permissions';
 
 const ORG_BY_ROLE: Record<string, string> = {
@@ -29,7 +29,7 @@ const AUTH_LEVEL_BY_ROLE: Record<string, string> = {
 };
 
 export default function ProfilePage() {
-    const user = getCurrentUser();
+    const user = useUser();
     const roleConfig = getRoleConfig(user);
     const displayName = user?.display_name || user?.email?.split('@')[0] || 'User';
     const email = user?.email || '';

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, createShipment, requestAudit, getCurrentUser, Shipment } from '@/lib/api';
+import { fetchShipments, createShipment, requestAudit, Shipment } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 
 const ANON_FARMER_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -13,6 +14,7 @@ const ANON_FARMER_ID = '00000000-0000-0000-0000-000000000000';
  */
 export default function FarmerDashboard() {
     const router = useRouter();
+    const user = useUser();
     const [myShipments, setMyShipments] = useState<Shipment[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,7 @@ export default function FarmerDashboard() {
     const handleLogHarvest = async () => {
         try {
             const newShipment = await createShipment({
-                farmer_id: getCurrentUser()?.id || ANON_FARMER_ID,
+                farmer_id: user?.id || ANON_FARMER_ID,
                 destination: 'Cooperative Buyer',
             });
             alert(`Harvest logged: ${newShipment.id}`);
@@ -45,7 +47,7 @@ export default function FarmerDashboard() {
     const handleRegisterAsset = async () => {
         try {
             const newShipment = await createShipment({
-                farmer_id: getCurrentUser()?.id || ANON_FARMER_ID,
+                farmer_id: user?.id || ANON_FARMER_ID,
                 destination: 'On-Farm Storage',
             });
             alert(`Asset registered: ${newShipment.id}`);
