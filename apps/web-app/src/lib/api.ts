@@ -158,14 +158,26 @@ export function setTokens(accessToken: string, refreshToken?: string) {
     }
 }
 
+// String constant duplicated from auth-store.ts to avoid a circular import
+// (auth-store imports User from this module).
+const AUTH_CHANGE_EVENT = 'origin-auth-change';
+
+function dispatchAuthChange() {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+    }
+}
+
 export function setUser(user: User) {
     localStorage.setItem('origin_user', JSON.stringify(user));
+    dispatchAuthChange();
 }
 
 export function clearAuth() {
     localStorage.removeItem('origin_access_token');
     localStorage.removeItem('origin_refresh_token');
     localStorage.removeItem('origin_user');
+    dispatchAuthChange();
 }
 
 export function isAuthenticated(): boolean {
