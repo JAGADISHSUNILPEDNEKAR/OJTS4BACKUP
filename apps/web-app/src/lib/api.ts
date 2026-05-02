@@ -7,6 +7,15 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api/v1';
 const USE_STATIC_DATA = process.env.NEXT_PUBLIC_USE_STATIC_DATA !== 'false'; // Default: true
 
+// Mock-mode auth fallback is only safe in static demo mode or non-prod builds.
+// In a prod build talking to a live backend, a network blip must NOT silently
+// grant a session — it must surface to the user.
+const MOCK_AUTH_ENABLED = USE_STATIC_DATA || process.env.NODE_ENV !== 'production';
+
+function isNetworkError(err: unknown): boolean {
+    return err instanceof TypeError && err.message === 'Failed to fetch';
+}
+
 // ─── Pagination Types ────────────────────────────────────────────
 export interface PaginatedResponse<T> {
     data: T[];
@@ -172,14 +181,24 @@ function getAuthHeaders(): HeadersInit {
 }
 
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-    const headers = {
-        ...getAuthHeaders(),
-        ...(options.headers || {}),
-    };
+    const sendOnce = async () => fetch(url, {
+        ...options,
+        headers: { ...getAuthHeaders(), ...(options.headers || {}) },
+    });
+
     try {
-        return await fetch(url, { ...options, headers });
+        const res = await sendOnce();
+        // On 401, attempt a single refresh + retry. refreshAccessToken() uses raw
+        // fetch internally, so this can't recurse.
+        if (res.status === 401 && getRefreshToken()) {
+            const refreshed = await refreshAccessToken();
+            if (refreshed) {
+                return await sendOnce();
+            }
+        }
+        return res;
     } catch (err) {
-        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        if (isNetworkError(err)) {
             console.warn(`[API] Connection failed to ${url}.`);
         }
         throw err;
@@ -283,6 +302,11 @@ export async function login(email: string, password: string, totpCode?: string) 
         if (data.user) setUser(data.user);
         return data;
     } catch (err) {
+        // Only fall through to mock auth on a real network failure in dev/static mode.
+        // Auth rejections (wrong password, locked account) must always surface.
+        if (!MOCK_AUTH_ENABLED || !isNetworkError(err)) {
+            throw err;
+        }
         console.warn('Backend unreachable, using mock login for dev', err);
         const role = inferMockRole(email);
         const mockData = {
@@ -319,6 +343,9 @@ export async function register(email: string, password: string, role?: string) {
         if (data.user) setUser(data.user);
         return data;
     } catch (err) {
+        if (!MOCK_AUTH_ENABLED || !isNetworkError(err)) {
+            throw err;
+        }
         console.warn('Backend unreachable, using mock register for dev', err);
         const assignedRole = (role as UserRoleString) || inferMockRole(email);
         const mockData = {
@@ -418,7 +445,7 @@ export async function createShipment(data: Record<string, unknown>) {
         });
         if (!res.ok) throw new Error('Failed to create shipment');
         return await res.json();
-    } catch (err) {
+    } catch {
         const newShipment = { id: `MOCK-${Math.floor(Math.random() * 1000)}`, ...data, status: 'CREATED', risk_score: 0.1 } as Shipment;
         return newShipment;
     }
