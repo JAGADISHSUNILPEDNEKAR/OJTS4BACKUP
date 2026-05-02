@@ -98,6 +98,7 @@ export type UserRoleString =
     | 'ADMIN';
 
 export interface User {
+    id?: string;
     email: string;
     role: UserRoleString | string;
     display_name?: string;
@@ -229,6 +230,20 @@ const MOCK_ROLE_DISPLAY_NAMES: Partial<Record<UserRoleString, string>> = {
     CONSUMER: 'Jamie Lee',
 };
 
+/**
+ * Synthesize a deterministic UUID-shaped id from an email so mock-mode users
+ * have a stable identifier across reloads. Real backend logins use the id
+ * returned in the auth response and bypass this entirely.
+ */
+function mockUserId(email: string): string {
+    let hash = 0;
+    for (let i = 0; i < email.length; i++) {
+        hash = (hash * 31 + email.charCodeAt(i)) | 0;
+    }
+    const hex = (Math.abs(hash).toString(16) + '0'.repeat(32)).slice(0, 32);
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
 // ─── Auth Endpoints ──────────────────────────────────────────────
 export async function login(email: string, password: string, totpCode?: string) {
     const body: Record<string, string> = { email, password };
@@ -257,6 +272,7 @@ export async function login(email: string, password: string, totpCode?: string) 
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
             user: {
+                id: mockUserId(email),
                 email,
                 role,
                 display_name: MOCK_ROLE_DISPLAY_NAMES[role] || email.split('@')[0]
@@ -292,6 +308,7 @@ export async function register(email: string, password: string, role?: string) {
             access_token: 'm_dev_token_' + btoa(email),
             refresh_token: 'm_dev_refresh',
             user: {
+                id: mockUserId(email),
                 email,
                 role: assignedRole,
                 display_name: MOCK_ROLE_DISPLAY_NAMES[assignedRole as UserRoleString] || email.split('@')[0]
