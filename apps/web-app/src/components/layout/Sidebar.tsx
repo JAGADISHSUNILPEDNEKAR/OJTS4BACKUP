@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getCurrentUser } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 import { getRoleConfig } from '@/lib/permissions';
 import type { Capability } from '@/lib/roles.config';
 
@@ -31,7 +31,7 @@ const NAV_ICONS: Record<Capability, React.ReactNode> = {
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     const pathname = usePathname();
 
-    const user = getCurrentUser();
+    const user = useUser();
     const roleConfig = getRoleConfig(user);
     const menuItems = roleConfig.navItems;
 

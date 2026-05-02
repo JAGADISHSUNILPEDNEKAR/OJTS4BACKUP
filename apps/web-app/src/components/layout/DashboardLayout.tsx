@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import {
     isAuthenticated,
-    getCurrentUser,
     searchEntities,
     SearchResults,
     Shipment,
     Alert,
     Audit
 } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 import { getRoleConfig } from '@/lib/permissions';
 import { useRef } from 'react';
 
@@ -25,6 +25,7 @@ export default function DashboardLayout({
     description?: string;
 }) {
     const router = useRouter();
+    const user = useUser();
     const [timeRange, setTimeRange] = useState('Past 24 Hours');
     const [showTimeDropdown, setShowTimeDropdown] = useState(false);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -299,10 +300,10 @@ export default function DashboardLayout({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <div className="hide-mobile" style={{ textAlign: 'right' }}>
                                 <p style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0, color: 'var(--text-main)' }}>
-                                    {getCurrentUser()?.display_name || getCurrentUser()?.email || 'User'}
+                                    {user?.display_name || user?.email || 'User'}
                                 </p>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                                    {getRoleConfig(getCurrentUser()).label}
+                                    {getRoleConfig(user).label}
                                 </p>
                             </div>
                             <div onClick={() => router.push('/profile')} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -311,7 +312,7 @@ export default function DashboardLayout({
                                     height: '36px',
                                     borderRadius: '50%',
                                     background: '#e2e8f0',
-                                    backgroundImage: `url("https://i.pravatar.cc/150?u=${getCurrentUser()?.email || 'user@origin.io'}")`,
+                                    backgroundImage: `url("https://i.pravatar.cc/150?u=${user?.email || 'user@origin.io'}")`,
                                     backgroundSize: 'cover'
                                 }}></div>
                                 <div style={{ position: 'absolute', bottom: '0', right: '0', width: '10px', height: '10px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid white' }}></div>

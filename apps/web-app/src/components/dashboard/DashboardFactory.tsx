@@ -1,6 +1,6 @@
 "use client";
 
-import { getCurrentUser } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 import { normalizeRole } from '@/lib/permissions';
 import type { UserRole } from '@/lib/roles.config';
 import AdminDashboard from './views/AdminDashboard';
@@ -26,10 +26,11 @@ const ROLE_VIEW_MAP: Partial<Record<UserRole, React.ComponentType>> = {
 };
 
 export default function DashboardFactory() {
-    // getCurrentUser() returns null during SSR (no window), so SSR + first render
-    // both produce AdminDashboard. After client hydration, the role-specific view
-    // takes over — same pattern Sidebar/DashboardLayout already use.
-    const role = normalizeRole(getCurrentUser()?.role);
+    // useUser() returns null during SSR + first client render (see auth-store),
+    // so SSR + first hydration both produce AdminDashboard. After hydration,
+    // the role-specific view takes over with no hydration mismatch warning.
+    const user = useUser();
+    const role = normalizeRole(user?.role);
     const View = ROLE_VIEW_MAP[role] ?? AdminDashboard;
     return <View />;
 }

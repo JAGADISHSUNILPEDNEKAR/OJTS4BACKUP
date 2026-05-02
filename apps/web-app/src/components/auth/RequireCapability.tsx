@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { getCurrentUser } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 import { can, getRoleConfig } from '@/lib/permissions';
 import type { Capability } from '@/lib/roles.config';
 
@@ -20,7 +20,7 @@ interface RequireCapabilityProps {
  * Place inside DashboardLayout, not around it.
  */
 export default function RequireCapability({ cap, children, featureLabel }: RequireCapabilityProps) {
-    const user = getCurrentUser();
+    const user = useUser();
     if (can(user, cap)) {
         return <>{children}</>;
     }
