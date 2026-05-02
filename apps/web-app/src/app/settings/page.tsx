@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { updateProfile, getCurrentUser } from '@/lib/api';
+import { updateProfile } from '@/lib/api';
+import { useUser } from '@/lib/auth-store';
 
 const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
     <div
@@ -28,12 +29,16 @@ const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () =>
 );
 
 export default function SettingsPage() {
-    const initialUser = getCurrentUser();
-    const initialDisplayName = initialUser?.display_name || initialUser?.email?.split('@')[0] || '';
-    const initialEmail = initialUser?.email || '';
+    const user = useUser();
+    const initialDisplayName = user?.display_name || user?.email?.split('@')[0] || '';
+    const initialEmail = user?.email || '';
 
-    const [displayName, setDisplayName] = useState(initialDisplayName);
-    const [email, setEmail] = useState(initialEmail);
+    // null = "untouched, fall back to the user-derived value". As soon as the
+    // user types in the field, the draft becomes a string and overrides.
+    // Avoids syncing useState from useEffect, which the lint rule rejects
+    // (and which would clobber in-progress edits if the user object updated).
+    const [displayNameDraft, setDisplayNameDraft] = useState<string | null>(null);
+    const [emailDraft, setEmailDraft] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [mlAlerts, setMlAlerts] = useState(true);
@@ -41,7 +46,14 @@ export default function SettingsPage() {
     const [autoAudit, setAutoAudit] = useState(true);
     const [darkMode, setDarkMode] = useState(false);
 
-    const hasChanges = displayName !== initialDisplayName || email !== initialEmail;
+    const displayName = displayNameDraft ?? initialDisplayName;
+    const email = emailDraft ?? initialEmail;
+    const setDisplayName = setDisplayNameDraft;
+    const setEmail = setEmailDraft;
+
+    const hasChanges =
+        (displayNameDraft !== null && displayNameDraft !== initialDisplayName) ||
+        (emailDraft !== null && emailDraft !== initialEmail);
 
     const handleSave = async () => {
         setSaving(true);
