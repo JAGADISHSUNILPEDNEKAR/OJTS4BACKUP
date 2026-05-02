@@ -16,7 +16,7 @@ class PSBTSignRequest(BaseModel):
 @router.post("/dispute")
 async def flag_dispute(
     shipment_id: str,
-    current_user: CurrentUser = Depends(RoleChecker([UserRole.FARMER, UserRole.COMPANY, UserRole.GOVERNMENT]))
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.FARMER, UserRole.COMPANY, UserRole.AUDITOR]))
 ):
     logger.info(f"Flagging dispute for shipment {shipment_id}")
     # Updates DB
