@@ -191,7 +191,7 @@ export default function DashboardLayout({
                             }}>
                                 {searchResults.shipments.length === 0 && searchResults.alerts.length === 0 && searchResults.audits.length === 0 ? (
                                     <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                                        No results found for "{searchQuery}"
+                                        No results found for &quot;{searchQuery}&quot;
                                     </div>
                                 ) : (
                                     <>

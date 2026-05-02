@@ -5,6 +5,12 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchAlerts, fetchStats, acknowledgeAlert, ignoreAlert, bulkAcknowledgeAlerts, Alert, PaginatedResponse, DatasetStats } from '@/lib/api';
 
+const FILTER_MAP: Record<string, string> = {
+    'All': '',
+    'Critical': 'CRITICAL',
+    'Warning': 'WARNING',
+};
+
 export default function AlertsPage() {
     const [result, setResult] = useState<PaginatedResponse<Alert>>({ data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 });
     const [stats, setStats] = useState<DatasetStats | null>(null);
@@ -13,17 +19,14 @@ export default function AlertsPage() {
     const [severityFilter, setSeverityFilter] = useState('All');
     const [processing, setProcessing] = useState<string | null>(null);
 
-    const FILTER_MAP: Record<string, string> = {
-        'All': '',
-        'Critical': 'CRITICAL',
-        'Warning': 'WARNING',
-    };
-
     const loadAlerts = useCallback(async (p: number, filter: string) => {
         setLoading(true);
-        const data = await fetchAlerts(p, FILTER_MAP[filter] || '');
-        setResult(data);
-        setLoading(false);
+        try {
+            const data = await fetchAlerts(p, FILTER_MAP[filter] || '');
+            setResult(data);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {

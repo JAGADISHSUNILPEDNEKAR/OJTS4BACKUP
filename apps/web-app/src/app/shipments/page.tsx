@@ -9,6 +9,14 @@ import { useMemo } from 'react';
 
 const LiveTelemetryMap = dynamic(() => import('@/components/maps/LiveTelemetryMap'), { ssr: false });
 
+const FILTER_MAP: Record<string, string> = {
+    'All Shipments': '',
+    'In Transit': 'IN_TRANSIT',
+    'Delivered': 'DELIVERED',
+    'Delayed': 'DELAYED',
+    'Cancelled': 'CANCELLED',
+};
+
 export default function ShipmentsPage() {
     const [result, setResult] = useState<PaginatedResponse<Shipment>>({ data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 });
     const [stats, setStats] = useState<DatasetStats | null>(null);
@@ -19,20 +27,16 @@ export default function ShipmentsPage() {
     const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
     const selectedShipment = useMemo(() => result.data.find(s => s.id === selectedShipmentId) || null, [result.data, selectedShipmentId]);
 
-    const FILTER_MAP: Record<string, string> = {
-        'All Shipments': '',
-        'In Transit': 'IN_TRANSIT',
-        'Delivered': 'DELIVERED',
-        'Delayed': 'DELAYED',
-        'Cancelled': 'CANCELLED',
-    };
     const filters = Object.keys(FILTER_MAP);
 
     const loadShipments = useCallback(async (p: number, filter: string) => {
         setLoading(true);
-        const data = await fetchShipments(p, FILTER_MAP[filter] || '');
-        setResult(data);
-        setLoading(false);
+        try {
+            const data = await fetchShipments(p, FILTER_MAP[filter] || '');
+            setResult(data);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {

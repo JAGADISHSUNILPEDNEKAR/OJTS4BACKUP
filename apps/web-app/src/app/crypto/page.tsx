@@ -6,6 +6,12 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchEscrows, fetchStats, settleEscrow, disputeEscrow, releaseEscrow, Escrow, PaginatedResponse, DatasetStats } from '@/lib/api';
 
+const FILTER_MAP: Record<string, string> = {
+    'All': '',
+    'Held': 'HELD',
+    'Released': 'RELEASED',
+};
+
 export default function CryptoPage() {
     const router = useRouter();
     const [result, setResult] = useState<PaginatedResponse<Escrow>>({ data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 });
@@ -15,17 +21,14 @@ export default function CryptoPage() {
     const [statusFilter, setStatusFilter] = useState('All');
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
-    const FILTER_MAP: Record<string, string> = {
-        'All': '',
-        'Held': 'HELD',
-        'Released': 'RELEASED',
-    };
-
     const loadEscrows = useCallback(async (p: number, filter: string) => {
         setLoading(true);
-        const data = await fetchEscrows(p, FILTER_MAP[filter] || '');
-        setResult(data);
-        setLoading(false);
+        try {
+            const data = await fetchEscrows(p, FILTER_MAP[filter] || '');
+            setResult(data);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {

@@ -5,6 +5,13 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchAudits, fetchStats, requestAudit, Audit, PaginatedResponse, DatasetStats } from '@/lib/api';
 
+const FILTER_MAP: Record<string, string> = {
+    'All': '',
+    'Passed': 'Passed',
+    'Warning': 'Warning',
+    'Failed': 'Failed',
+};
+
 export default function AuditsPage() {
     const [result, setResult] = useState<PaginatedResponse<Audit>>({ data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 });
     const [stats, setStats] = useState<DatasetStats | null>(null);
@@ -13,18 +20,14 @@ export default function AuditsPage() {
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState('All');
 
-    const FILTER_MAP: Record<string, string> = {
-        'All': '',
-        'Passed': 'Passed',
-        'Warning': 'Warning',
-        'Failed': 'Failed',
-    };
-
     const loadAudits = useCallback(async (p: number, filter: string) => {
         setLoading(true);
-        const data = await fetchAudits(p, FILTER_MAP[filter] || '');
-        setResult(data);
-        setLoading(false);
+        try {
+            const data = await fetchAudits(p, FILTER_MAP[filter] || '');
+            setResult(data);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
