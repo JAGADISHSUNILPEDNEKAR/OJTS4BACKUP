@@ -24,6 +24,7 @@ vwIDAQAB
     AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str = "origin-shipment-manifests"
     ML_SERVICE_URL: str = "http://localhost:8004"
+    INTERNAL_API_KEY: str = "dev-secret-key"
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

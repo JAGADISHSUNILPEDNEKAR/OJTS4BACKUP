@@ -2,8 +2,9 @@ import asyncio
 import logging
 import random
 from pydantic import BaseModel
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_events
+from core.dependencies import verify_internal_key
 from models.inference import inference_engine
 
 logger = logging.getLogger("ml-service")
@@ -49,7 +50,10 @@ async def health_check():
     return {"status": "ok", "service": "ml-service"}
 
 @app.post("/api/v1/ml/precheck", response_model=PrecheckResponse)
-async def ml_precheck(request: PrecheckRequest):
+async def ml_precheck(
+    request: PrecheckRequest,
+    internal_key: str = Depends(verify_internal_key)
+):
     risk_score = inference_engine.predict_precheck(request.filename, request.destination)
     
     status = "REJECTED" if risk_score >= 80.0 else "APPROVED"

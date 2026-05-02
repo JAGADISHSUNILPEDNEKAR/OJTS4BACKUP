@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "origin")
     KAFKA_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "dev-secret-key")
 
     @property
     def DATABASE_URL(self) -> str:
