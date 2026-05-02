@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, createShipment, requestAudit, Shipment } from '@/lib/api';
+import { fetchShipments, fetchStats, createShipment, requestAudit, Shipment, DatasetStats } from '@/lib/api';
 import { useUser } from '@/lib/auth-store';
 
 const ANON_FARMER_ID = '00000000-0000-0000-0000-000000000000';
@@ -16,14 +16,19 @@ export default function FarmerDashboard() {
     const router = useRouter();
     const user = useUser();
     const [myShipments, setMyShipments] = useState<Shipment[]>([]);
+    const [stats, setStats] = useState<DatasetStats | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             try {
-                const result = await fetchShipments(1);
-                setMyShipments(result.data.slice(0, 8));
+                const [shipmentsData, statsData] = await Promise.all([
+                    fetchShipments(1),
+                    fetchStats(),
+                ]);
+                setMyShipments(shipmentsData.data.slice(0, 8));
+                setStats(statsData);
             } catch (err) {
                 console.error('Failed to load farmer data', err);
             }
@@ -65,14 +70,15 @@ export default function FarmerDashboard() {
         alert(`Audit requested for: ${result.shipmentId}`);
     };
 
-    // Demo metrics — Phase 1 metric keys (Soil Health, Harvest Yield, Compliance Score).
-    // Phase 6+ will hook these to real telemetry once the farm-IoT endpoint is live.
+    // Soil Health, Harvest Yield, and Fuel Efficiency are still demo values
+    // (no farm-IoT/agronomic feed yet — see build-dataset.mjs for the gap list).
+    // Compliance Score is derived from real audit pass rate.
     const metrics = [
-        { label: 'Soil Health', value: '87 / 100', delta: '+3 pts this week', tone: 'good',
+        { label: 'Soil Health', value: stats ? `${stats.soilHealth} / 100` : '—', delta: 'Demo — farm IoT pending', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg> },
-        { label: 'Harvest Yield', value: '4.2t / acre', delta: '+11% YoY', tone: 'good',
+        { label: 'Harvest Yield', value: stats ? `${stats.harvestYield}t / acre` : '—', delta: 'Demo — agronomic feed pending', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"></path></svg> },
-        { label: 'Compliance Score', value: '96%', delta: 'All certs current', tone: 'good',
+        { label: 'Compliance Score', value: stats ? `${stats.complianceScore}%` : '—', delta: 'Audit pass rate', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
         { label: 'Active Lots', value: loading ? '—' : myShipments.length.toString(), delta: 'In transit / storage', tone: 'neutral',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> },
