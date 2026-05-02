@@ -3,6 +3,7 @@ import logging
 import random
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends
+from core.config import settings
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_events
 from core.dependencies import verify_internal_key
 from models.inference import inference_engine
@@ -25,6 +26,15 @@ class PrecheckResponse(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
+    # Refuse to start in production with the committed dev secret. /precheck
+    # accepts callers that present this key, so leaving the default in prod
+    # is equivalent to publishing the gate (because we did, in this repo).
+    if settings.REQUIRE_INTERNAL_API_KEY and settings.INTERNAL_API_KEY == "dev-secret-key":
+        raise RuntimeError(
+            "REQUIRE_INTERNAL_API_KEY=true but INTERNAL_API_KEY is the committed "
+            "dev default. Set INTERNAL_API_KEY to a real secret in your env."
+        )
+
     logger.info("Initializing ML Service...")
     # Load pyTorch models
     inference_engine.load()
