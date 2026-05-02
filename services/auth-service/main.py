@@ -62,8 +62,17 @@ async def startup_event():
     # Load keys from Vault if available
     if await settings.load_vault_keys():
          print("Successfully loaded JWT signing keys from Vault.")
+    elif settings.REQUIRE_VAULT_KEYS:
+        # Fail loudly. Signing JWTs with the repo's dev keys in production
+        # is equivalent to giving every reader of the repo admin tokens.
+        raise RuntimeError(
+            "REQUIRE_VAULT_KEYS=true but Vault did not return JWT keys. "
+            "Refusing to start with the hardcoded dev keys. "
+            "Check VAULT_ADDR / VAULT_TOKEN and the secret at "
+            "secret/data/origin/auth-service/jwt_keys."
+        )
     else:
-         print("Using default hardcoded JWT signing keys.")
+         print("Using default hardcoded JWT signing keys (DEV ONLY).")
 
     # Auto-create tables in dev (Alembic handles this in prod)
     async with engine.begin() as conn:
