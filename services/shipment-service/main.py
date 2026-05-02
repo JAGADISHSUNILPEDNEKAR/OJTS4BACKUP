@@ -144,10 +144,23 @@ async def custody_handoff(
     # 0. Fetch shipment
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
     shipment = result.scalars().first()
-    
+
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
-        
+
+    # Ownership check: only the current custodian (or SUPERADMIN as an ops
+    # override) may hand off this shipment. The role gate alone would let any
+    # LOGISTICS/FARMER hand off any shipment RLS lets them see — too broad for
+    # a chain-of-custody event.
+    if (
+        str(shipment.current_custodian_id) != str(current_user.id)
+        and current_user.role != UserRole.SUPERADMIN
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the current custodian can hand off this shipment"
+        )
+
     previous_custodian_id = shipment.current_custodian_id
 
     # 1. ECDSA Signature Validation
