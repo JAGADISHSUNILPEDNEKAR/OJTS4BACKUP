@@ -43,15 +43,12 @@ export default function AuditorDashboard() {
 
     const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
 
-    const totalAudits = stats ? stats.passedAudits + stats.failedAudits + stats.warningAudits : 0;
-    const trustScore = totalAudits > 0 && stats ? ((stats.passedAudits / totalAudits) * 100).toFixed(1) : '—';
-
     const metrics = [
-        { label: 'Pending Audits', value: stats ? fmt(stats.warningAudits) : '—', delta: 'Awaiting review', tone: 'warn',
+        { label: 'Pending Audits', value: stats ? fmt(stats.pendingAudits) : '—', delta: 'Awaiting review', tone: 'warn',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> },
-        { label: 'Trust Score', value: `${trustScore}%`, delta: 'Pass rate', tone: 'good',
+        { label: 'Trust Score', value: stats ? `${stats.trustScore}%` : '—', delta: 'Pass rate', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
-        { label: 'Proof Validity', value: '99.97%', delta: 'Merkle anchor success', tone: 'good',
+        { label: 'Proof Validity', value: stats ? `${stats.proofValidity}%` : '—', delta: 'Merkle anchor success', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 4 12 14.01 9 11.01"></polyline><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path></svg> },
         { label: 'Failed Audits', value: stats ? fmt(stats.failedAudits) : '—', delta: 'Requires escalation', tone: 'danger',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> },
