@@ -23,6 +23,15 @@ producer: AIOKafkaProducer = None
 
 @app.on_event("startup")
 async def startup_event():
+    # Refuse to start in production with the committed dev secret. Service-to-
+    # service calls authenticate with this key, so leaving the default in prod
+    # is equivalent to publishing the key in the repo (because we did).
+    if settings.REQUIRE_INTERNAL_API_KEY and settings.INTERNAL_API_KEY == "dev-secret-key":
+        raise RuntimeError(
+            "REQUIRE_INTERNAL_API_KEY=true but INTERNAL_API_KEY is the committed "
+            "dev default. Set INTERNAL_API_KEY to a real secret in your env."
+        )
+
     # Only for development structure creating - normally Alembic handles this.
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

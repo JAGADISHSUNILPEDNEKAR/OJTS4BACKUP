@@ -25,7 +25,12 @@ vwIDAQAB
     S3_BUCKET_NAME: str = "origin-shipment-manifests"
     ML_SERVICE_URL: str = "http://localhost:8004"
     INTERNAL_API_KEY: str = "dev-secret-key"
-    
+
+    # Refuse to start if INTERNAL_API_KEY is still the committed dev default.
+    # Set to true in production so a misconfigured deploy crashes loudly
+    # instead of authenticating service-to-service calls with a public secret.
+    REQUIRE_INTERNAL_API_KEY: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
