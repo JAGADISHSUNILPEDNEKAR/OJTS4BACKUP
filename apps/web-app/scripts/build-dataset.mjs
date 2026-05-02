@@ -276,13 +276,25 @@ async function main() {
     paginateAndWrite(resolve(PUBLIC_DATA_DIR, 'escrows'), 'Escrows', escrows, e => e.status, 'status');
     paginateAndWrite(resolve(PUBLIC_DATA_DIR, 'audits'), 'Audits', audits, a => a.status, 'status');
 
+    // ── Audit + delivery rollups (used both directly and to derive persona metrics) ──
+    const passedAudits = audits.filter(a => a.status === 'Passed').length;
+    const failedAudits = audits.filter(a => a.status === 'Failed').length;
+    const warningAudits = audits.filter(a => a.status === 'Warning').length;
+    const totalAudits = passedAudits + failedAudits + warningAudits;
+    const delivered = statusCounts.DELIVERED || 0;
+    const delayed = statusCounts.DELAYED || 0;
+    const inTransit = statusCounts.IN_TRANSIT || 0;
+    const shipmentsWithProof = shipments.filter(s => s.risk_score != null).length;
+    const round1 = (v) => Math.round(v * 10) / 10;
+    const round2 = (v) => Math.round(v * 100) / 100;
+
     // ── Write global stats ──────────────────────────
     const stats = {
         totalShipments: totalRows,
         totalAlerts: alerts.length,
         avgRiskScore: Math.round((totalRisk / totalRows) * 10000) / 10000,
         totalEscrowBTC: Math.round((totalSales / 1000) * 1000) / 1000,
-        totalEscrowUSD: Math.round(totalSales * 100) / 100,
+        totalEscrowUSD: round2(totalSales),
         statusCounts,
         fraudCount,
         tempViolations,
@@ -294,28 +306,51 @@ async function main() {
             .map(([name, count]) => ({ name, count })),
         regionCounts,
         shippingModeCounts,
-        passedAudits: audits.filter(a => a.status === 'Passed').length,
-        failedAudits: audits.filter(a => a.status === 'Failed').length,
-        warningAudits: audits.filter(a => a.status === 'Warning').length,
+        passedAudits,
+        failedAudits,
+        warningAudits,
         criticalAlerts: alerts.filter(a => a.severity === 'CRITICAL').length,
         warningAlerts: alerts.filter(a => a.severity === 'WARNING').length,
-        // Persona-specific metrics (static demo values for Phase 1-6)
-        soilHealth: 87,
-        harvestYield: 4.2,
-        complianceScore: 96,
-        onTimeDelivery: 94.2,
-        fuelEfficiency: 7.4,
-        anomalyCount: totalRows > 0 ? alerts.length / (totalRows / 1000) : 0, // Mock anomaly density
-        pendingAudits: audits.filter(a => a.status === 'Warning' || a.status === 'Failed').length,
-        trustScore: 99.97,
-        proofValidity: 100,
-        productJourney: 8, // Average touchpoints
-        sustainabilityRating: 4.8,
-        shelfLife: 14.5, // days
-        stockLevels: 82, // %
-        inboundTransit: 12, // units
-        foodSecurityIndex: 78,
-        tradeVolume: totalSales > 1000000 ? totalSales / 1000000 : totalSales, // in Millions if large
+
+        // ── Persona metrics derived from the dataset ──────────────────
+        // % audits passing — used for Compliance and Trust framing
+        complianceScore: totalAudits > 0 ? round1((passedAudits / totalAudits) * 100) : 0,
+        trustScore: totalAudits > 0 ? round2((passedAudits / totalAudits) * 100) : 0,
+        // % delivered on-time vs delayed
+        onTimeDelivery: (delivered + delayed) > 0
+            ? round1((delivered / (delivered + delayed)) * 100)
+            : 0,
+        // Audits awaiting review (Warning + Failed)
+        pendingAudits: warningAudits + failedAudits,
+        // % shipments with an ML risk_score attached (proxy for proof coverage)
+        proofValidity: totalRows > 0
+            ? round1((shipmentsWithProof / totalRows) * 100)
+            : 0,
+        // Anomaly count = temperature + route deviations (matches LogisticsDashboard's existing math)
+        anomalyCount: tempViolations + routeDeviations,
+        // Currently in-transit shipments
+        inboundTransit: inTransit,
+        // Trade volume in millions USD when large, raw otherwise
+        tradeVolume: totalSales > 1_000_000 ? round2(totalSales / 1_000_000) : round2(totalSales),
+
+        // ── DEMO metrics — no signal in the current dataset ───────────
+        // These need a real backend feed before they can be more than illustrative:
+        //   soilHealth     ← farm IoT soil sensor stream
+        //   harvestYield   ← farmer self-report or agronomic feed
+        //   fuelEfficiency ← fleet telemetry (km/L)
+        //   productJourney ← supply-graph touchpoint count (custody-events)
+        //   sustainabilityRating ← ESG provider feed
+        //   shelfLife      ← product perishability lookup
+        //   stockLevels    ← retailer inventory system
+        //   foodSecurityIndex ← composite gov metric (multi-source)
+        soilHealth: 87,                  // DEMO: 0–100 index
+        harvestYield: 4.2,               // DEMO: t/acre
+        fuelEfficiency: 7.4,             // DEMO: km/L
+        productJourney: 8,               // DEMO: avg touchpoints
+        sustainabilityRating: 4.8,       // DEMO: 0–5 stars
+        shelfLife: 14.5,                 // DEMO: days
+        stockLevels: 82,                 // DEMO: % capacity
+        foodSecurityIndex: 78,           // DEMO: 0–100 index
     };
     writeFileSync(resolve(PUBLIC_DATA_DIR, 'stats.json'), JSON.stringify(stats));
     console.log(`[build-dataset] Wrote stats.json`);
