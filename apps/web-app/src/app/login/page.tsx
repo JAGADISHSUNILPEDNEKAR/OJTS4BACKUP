@@ -4,15 +4,38 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login, register } from '@/lib/api';
 
+const REGISTER_ROLE_OPTIONS = [
+    { value: 'COMPANY', label: 'Enterprise Operator' },
+    { value: 'FARMER', label: 'Farmer' },
+    { value: 'LOGISTICS', label: 'Logistics Coordinator' },
+    { value: 'AUDITOR', label: 'Auditor' },
+    { value: 'RETAILER', label: 'Retailer' },
+    { value: 'GOVERNMENT', label: 'Government Oversight' },
+    { value: 'CONSUMER', label: 'Consumer' },
+];
+
+const DEMO_ACCOUNTS = [
+    { role: 'SUPERADMIN', email: 'admin@origin.demo', label: 'Platform Admin' },
+    { role: 'COMPANY', email: 'company@origin.demo', label: 'Enterprise Operator' },
+    { role: 'FARMER', email: 'farmer@origin.demo', label: 'Farmer' },
+    { role: 'LOGISTICS', email: 'logistics@origin.demo', label: 'Logistics' },
+    { role: 'AUDITOR', email: 'auditor@origin.demo', label: 'Auditor' },
+    { role: 'RETAILER', email: 'retailer@origin.demo', label: 'Retailer' },
+    { role: 'GOVERNMENT', email: 'government@origin.demo', label: 'Government' },
+    { role: 'CONSUMER', email: 'consumer@origin.demo', label: 'Consumer' },
+];
+
 export default function LoginPage() {
     const router = useRouter();
     const [isRegister, setIsRegister] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [registerRole, setRegisterRole] = useState('COMPANY');
     const [totpCode, setTotpCode] = useState('');
     const [showTotp, setShowTotp] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showDemo, setShowDemo] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,7 +44,7 @@ export default function LoginPage() {
 
         try {
             if (isRegister) {
-                await register(email, password);
+                await register(email, password, registerRole);
             } else {
                 await login(email, password, totpCode || undefined);
             }
@@ -38,6 +61,14 @@ export default function LoginPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleDemoFill = (demoEmail: string) => {
+        setEmail(demoEmail);
+        setPassword('demo');
+        setIsRegister(false);
+        setShowTotp(false);
+        setError('');
     };
 
     return (
@@ -177,6 +208,36 @@ export default function LoginPage() {
                             />
                         </div>
 
+                        {isRegister && (
+                            <div>
+                                <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Role
+                                </label>
+                                <select
+                                    id="role-select"
+                                    value={registerRole}
+                                    onChange={e => setRegisterRole(e.target.value)}
+                                    style={{
+                                        width: '100%', padding: '0.75rem 1rem',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px', color: '#f1f5f9',
+                                        fontSize: '0.875rem', outline: 'none',
+                                        appearance: 'none',
+                                        transition: 'border-color 0.15s ease-out',
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                >
+                                    {REGISTER_ROLE_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value} style={{ background: '#1e293b', color: '#f1f5f9' }}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         {showTotp && (
                             <div>
                                 <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -234,6 +295,55 @@ export default function LoginPage() {
                         >
                             {isRegister ? '← Back to Sign In' : "Don't have an account? Register"}
                         </button>
+                    </div>
+
+                    {/* Demo accounts disclosure */}
+                    <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
+                        <button
+                            type="button"
+                            onClick={() => setShowDemo(s => !s)}
+                            style={{
+                                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                background: 'none', border: 'none',
+                                color: '#94a3b8', fontSize: '0.75rem',
+                                fontWeight: 600, cursor: 'pointer', padding: '0.25rem 0',
+                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                            }}
+                        >
+                            <span>Try a demo account</span>
+                            <span style={{ fontSize: '0.875rem' }}>{showDemo ? '−' : '+'}</span>
+                        </button>
+                        {showDemo && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                {DEMO_ACCOUNTS.map(acc => (
+                                    <button
+                                        key={acc.role}
+                                        type="button"
+                                        onClick={() => handleDemoFill(acc.email)}
+                                        style={{
+                                            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.125rem',
+                                            padding: '0.5rem 0.625rem',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            borderRadius: '8px',
+                                            color: '#cbd5e1', fontSize: '0.6875rem',
+                                            cursor: 'pointer', textAlign: 'left',
+                                            transition: 'all 0.15s ease-out',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                                    >
+                                        <span style={{ fontWeight: 700, color: '#f1f5f9' }}>{acc.label}</span>
+                                        <span style={{ color: '#64748b', fontSize: '0.625rem' }}>{acc.email}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {showDemo && (
+                            <p style={{ fontSize: '0.625rem', color: '#475569', textAlign: 'center', margin: '0.75rem 0 0' }}>
+                                Click any account, then press Sign In. Password: <code style={{ color: '#94a3b8' }}>demo</code>
+                            </p>
+                        )}
                     </div>
                 </div>
 
