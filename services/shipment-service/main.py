@@ -83,7 +83,8 @@ async def create_shipment(
                     "filename": manifest.filename,
                     "content_type": manifest.content_type or "application/octet-stream",
                     "destination": destination
-                }
+                },
+                headers={"X-Internal-Key": settings.INTERNAL_API_KEY}
             )
             resp.raise_for_status()
             precheck_result = resp.json()
@@ -248,8 +249,11 @@ async def get_shipment_risk(
 
 @app.get("/api/v1/shipments", response_model=list[ShipmentResponse])
 async def list_shipments(
+    current_user: CurrentUser = Depends(get_current_user_from_token),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
+    # Auth: any authenticated user. RLS (set on the session via get_db_with_rls)
+    # restricts the result set to rows the caller is allowed to see.
     result = await db.execute(select(Shipment))
     return result.scalars().all()
 
@@ -257,6 +261,7 @@ async def list_shipments(
 async def init_escrow(
     shipment_id: str,
     request: EscrowInitRequest,
+    current_user: CurrentUser = Depends(RoleChecker([UserRole.FARMER, UserRole.COMPANY])),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
@@ -294,8 +299,11 @@ async def init_escrow(
 @app.get("/api/v1/shipments/{shipment_id}", response_model=ShipmentResponse)
 async def get_shipment(
     shipment_id: str,
+    current_user: CurrentUser = Depends(get_current_user_from_token),
     db: AsyncSession = Depends(get_db_with_rls)
 ):
+    # Auth: any authenticated user. RLS prevents cross-tenant access; the row
+    # simply won't be found if the caller isn't permitted to see it.
     result = await db.execute(select(Shipment).where(Shipment.id == uuid.UUID(shipment_id)))
     shipment = result.scalars().first()
     if not shipment:
