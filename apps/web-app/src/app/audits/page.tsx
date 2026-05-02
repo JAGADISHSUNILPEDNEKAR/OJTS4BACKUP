@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchAudits, fetchStats, requestAudit, Audit, PaginatedResponse, DatasetStats } from '@/lib/api';
 
 export default function AuditsPage() {
@@ -90,6 +91,7 @@ export default function AuditsPage() {
             title="System Audits & Compliance"
             description="Immutable audit logs and compliance reporting for regulatory oversight."
         >
+            <RequireCapability cap="nav.audits" featureLabel="Audits">
             {/* Stats Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {[
@@ -200,6 +202,7 @@ export default function AuditsPage() {
                     </div>
                 </div>
             </div>
+            </RequireCapability>
         </DashboardLayout>
     );
 }

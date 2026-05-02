@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchShipments, fetchStats, Shipment, PaginatedResponse, DatasetStats } from '@/lib/api';
 import { useMemo } from 'react';
 
@@ -96,6 +97,7 @@ export default function ShipmentsPage() {
             title="Shipment Management"
             description="End-to-end telemetry and verification for global asset transfers."
         >
+            <RequireCapability cap="nav.shipments" featureLabel="Shipments">
             <div className="card" style={{ padding: 0, overflow: 'hidden', height: 'clamp(250px, 40vw, 350px)', marginBottom: '1.5rem', position: 'relative' }}>
                 <LiveTelemetryMap 
                     shipments={result.data} 
@@ -241,6 +243,7 @@ export default function ShipmentsPage() {
                     </div>
                 </div>
             </div>
+            </RequireCapability>
         </DashboardLayout>
     );
 }

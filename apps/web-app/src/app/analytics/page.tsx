@@ -1,26 +1,21 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { getCurrentUser, fetchStats, DatasetStats } from '@/lib/api';
+import RequireCapability from '@/components/auth/RequireCapability';
+import { fetchStats, DatasetStats } from '@/lib/api';
 
 const RiskHeatmap = dynamic(() => import('@/components/maps/RiskHeatmap'), { ssr: false });
 
 export default function AnalyticsPage() {
-    const router = useRouter();
     const [stats, setStats] = useState<DatasetStats | null>(null);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [activeTimeframe, setActiveTimeframe] = useState('30d');
 
     useEffect(() => {
-        const user = getCurrentUser();
-        if (user && user.role !== 'ADMIN') {
-            router.replace('/');
-        }
         fetchStats().then(setStats).catch(console.error);
-    }, [router]);
+    }, []);
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 2));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
@@ -75,6 +70,7 @@ export default function AnalyticsPage() {
             title="Predictive Analytics & Intelligence"
             description="High-fidelity risk modeling and global supply chain intelligence."
         >
+            <RequireCapability cap="nav.analytics" featureLabel="Analytics">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Dataset Records', value: stats ? fmt(stats.totalShipments) : '—', change: '100%', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
@@ -188,6 +184,7 @@ export default function AnalyticsPage() {
                     <RiskHeatmap stats={stats} zoomLevel={zoomLevel} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
                 </div>
             </div>
+            </RequireCapability>
         </DashboardLayout>
     );
 }

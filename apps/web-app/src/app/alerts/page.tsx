@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchAlerts, fetchStats, acknowledgeAlert, ignoreAlert, bulkAcknowledgeAlerts, Alert, PaginatedResponse, DatasetStats } from '@/lib/api';
 
 export default function AlertsPage() {
@@ -87,6 +88,7 @@ export default function AlertsPage() {
             title="Incident Response Center"
             description="Centralized command for anomaly resolution and manual intervention."
         >
+            <RequireCapability cap="nav.alerts" featureLabel="Alerts">
             {/* Quick Stats Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {[
@@ -210,6 +212,7 @@ export default function AlertsPage() {
                     </div>
                 </div>
             </div>
+            </RequireCapability>
         </DashboardLayout>
     );
 }

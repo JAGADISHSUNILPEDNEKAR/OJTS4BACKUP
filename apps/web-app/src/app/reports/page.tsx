@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { generateReport, getCurrentUser, fetchStats, DatasetStats } from '@/lib/api';
+import RequireCapability from '@/components/auth/RequireCapability';
+import { generateReport, fetchStats, DatasetStats } from '@/lib/api';
 
 export default function ReportsPage() {
-    const router = useRouter();
     const [generating, setGenerating] = useState<string | null>(null);
     const [stats, setStats] = useState<DatasetStats | null>(null);
 
@@ -22,12 +21,6 @@ export default function ReportsPage() {
         loadStats();
     }, []);
 
-    useEffect(() => {
-        const user = getCurrentUser();
-        if (user && user.role !== 'ADMIN') {
-            router.replace('/');
-        }
-    }, [router]);
     const [generatedReports, setGeneratedReports] = useState<string[]>([]);
     const [activeCategory, setActiveCategory] = useState('All');
 
@@ -166,6 +159,7 @@ export default function ReportsPage() {
             title="Executive Reports"
             description="Consolidated performance reports and executive summaries."
         >
+            <RequireCapability cap="nav.reports" featureLabel="Reports">
             {/* Stats Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {[
@@ -245,6 +239,7 @@ export default function ReportsPage() {
                     </div>
                 ))}
             </div>
+            </RequireCapability>
         </DashboardLayout>
     );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import RequireCapability from '@/components/auth/RequireCapability';
 import { fetchEscrows, fetchStats, settleEscrow, disputeEscrow, releaseEscrow, Escrow, PaginatedResponse, DatasetStats } from '@/lib/api';
 
 export default function CryptoPage() {
@@ -77,6 +78,7 @@ export default function CryptoPage() {
             title="Escrow & Financial Settlements"
             description="Secure Bitcoin-anchored escrow contracts and cross-border settlement oversight."
         >
+            <RequireCapability cap="nav.escrow" featureLabel="Escrow">
             {/* Quick Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                 {[
@@ -197,6 +199,7 @@ export default function CryptoPage() {
                     </div>
                 </div>
             </div>
+            </RequireCapability>
         </DashboardLayout>
     );
 }
