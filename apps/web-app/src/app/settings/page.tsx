@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { updateProfile } from '@/lib/api';
+import { updateProfile, getCurrentUser } from '@/lib/api';
 
 const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
     <div
@@ -28,8 +28,12 @@ const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () =>
 );
 
 export default function SettingsPage() {
-    const [displayName, setDisplayName] = useState('Alex Rivera');
-    const [email, setEmail] = useState('alex@origin.io');
+    const initialUser = getCurrentUser();
+    const initialDisplayName = initialUser?.display_name || initialUser?.email?.split('@')[0] || '';
+    const initialEmail = initialUser?.email || '';
+
+    const [displayName, setDisplayName] = useState(initialDisplayName);
+    const [email, setEmail] = useState(initialEmail);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [mlAlerts, setMlAlerts] = useState(true);
@@ -37,7 +41,7 @@ export default function SettingsPage() {
     const [autoAudit, setAutoAudit] = useState(true);
     const [darkMode, setDarkMode] = useState(false);
 
-    const hasChanges = displayName !== 'Alex Rivera' || email !== 'alex@origin.io';
+    const hasChanges = displayName !== initialDisplayName || email !== initialEmail;
 
     const handleSave = async () => {
         setSaving(true);
