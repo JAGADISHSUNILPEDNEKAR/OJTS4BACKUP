@@ -1,6 +1,43 @@
+"use client";
+
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { getCurrentUser } from '@/lib/api';
+import { getRoleConfig } from '@/lib/permissions';
+
+const ORG_BY_ROLE: Record<string, string> = {
+    SUPERADMIN: 'Origin Platform',
+    COMPANY: 'GlobalLogistics',
+    FARMER: 'Cooperative #441',
+    LOGISTICS: 'Origin Fleet Network',
+    AUDITOR: 'Origin Verification Bureau',
+    RETAILER: 'Whole Harvest Market',
+    GOVERNMENT: 'Trade & Customs Authority',
+    CONSUMER: 'Origin Public',
+    USER: 'Origin Network',
+};
+
+const AUTH_LEVEL_BY_ROLE: Record<string, string> = {
+    SUPERADMIN: 'L4 Access',
+    COMPANY: 'L3 Access',
+    GOVERNMENT: 'L3 Access',
+    AUDITOR: 'L3 Access',
+    LOGISTICS: 'L2 Access',
+    FARMER: 'L2 Access',
+    RETAILER: 'L2 Access',
+    CONSUMER: 'L1 Public',
+    USER: 'L1 Public',
+};
 
 export default function ProfilePage() {
+    const user = getCurrentUser();
+    const roleConfig = getRoleConfig(user);
+    const displayName = user?.display_name || user?.email?.split('@')[0] || 'User';
+    const email = user?.email || '';
+    const roleKey = (user?.role || 'USER').toUpperCase();
+    const org = ORG_BY_ROLE[roleKey] || ORG_BY_ROLE.USER;
+    const authLevel = AUTH_LEVEL_BY_ROLE[roleKey] || AUTH_LEVEL_BY_ROLE.USER;
+    const avatarSeed = email || 'origin-user';
+
     return (
         <DashboardLayout
             title="My Profile"
@@ -13,7 +50,7 @@ export default function ProfilePage() {
                         height: '120px',
                         borderRadius: '50%',
                         background: '#e2e8f0',
-                        backgroundImage: 'url("https://i.pravatar.cc/150?u=alex@origin.io")',
+                        backgroundImage: `url("https://i.pravatar.cc/150?u=${encodeURIComponent(avatarSeed)}")`,
                         backgroundSize: 'cover',
                         border: '4px solid white',
                         boxShadow: 'var(--shadow-lg)'
@@ -23,17 +60,22 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Alex Rivera</h2>
-                <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: '2rem' }}>Enterprise Admin @ GlobalLogistics</p>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>{displayName}</h2>
+                <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.5rem' }}>
+                    {roleConfig.label} @ {org}
+                </p>
+                {email && (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '2rem' }}>{email}</p>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)', padding: '1.5rem 0', marginBottom: '2rem' }}>
                     <div>
                         <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>AUTHORIZATIONS</p>
-                        <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: '0.25rem 0' }}>L3 Access</p>
+                        <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: '0.25rem 0' }}>{authLevel}</p>
                     </div>
                     <div>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>ACTIVE SHIPMENTS</p>
-                        <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: '0.25rem 0' }}>12 Active</p>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>ROLE</p>
+                        <p style={{ fontSize: '1.125rem', fontWeight: 700, margin: '0.25rem 0' }}>{roleConfig.badge}</p>
                     </div>
                     <div>
                         <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', margin: 0 }}>REP SCORE</p>
