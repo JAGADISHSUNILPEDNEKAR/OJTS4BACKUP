@@ -12,6 +12,7 @@ from database import engine, get_db, Base
 from models import SensorReading
 from schemas import BulkTelemetryUpload
 from core.vault import VaultClient
+from core.config import settings
 
 app = FastAPI(title="Origin IoT Ingestion Service")
 logging.basicConfig(level=logging.INFO)
