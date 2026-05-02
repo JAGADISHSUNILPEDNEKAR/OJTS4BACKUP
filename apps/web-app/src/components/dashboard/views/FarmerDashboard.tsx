@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, createShipment, requestAudit, Shipment } from '@/lib/api';
+import { fetchShipments, createShipment, requestAudit, getCurrentUser, Shipment } from '@/lib/api';
+
+const ANON_FARMER_ID = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Dashboard view for the FARMER role.
@@ -31,7 +33,7 @@ export default function FarmerDashboard() {
     const handleLogHarvest = async () => {
         try {
             const newShipment = await createShipment({
-                farmer_id: '00000000-0000-0000-0000-000000000000',
+                farmer_id: getCurrentUser()?.id || ANON_FARMER_ID,
                 destination: 'Cooperative Buyer',
             });
             alert(`Harvest logged: ${newShipment.id}`);
@@ -43,7 +45,7 @@ export default function FarmerDashboard() {
     const handleRegisterAsset = async () => {
         try {
             const newShipment = await createShipment({
-                farmer_id: '00000000-0000-0000-0000-000000000000',
+                farmer_id: getCurrentUser()?.id || ANON_FARMER_ID,
                 destination: 'On-Farm Storage',
             });
             alert(`Asset registered: ${newShipment.id}`);
