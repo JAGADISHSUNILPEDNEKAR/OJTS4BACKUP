@@ -35,6 +35,23 @@ export interface DatasetStats {
     warningAudits: number;
     criticalAlerts: number;
     warningAlerts: number;
+    // Persona-specific metrics (static demo values)
+    soilHealth: number;
+    harvestYield: number;
+    complianceScore: number;
+    onTimeDelivery: number;
+    fuelEfficiency: number;
+    anomalyCount: number;
+    pendingAudits: number;
+    trustScore: number;
+    proofValidity: number;
+    productJourney: number;
+    sustainabilityRating: number;
+    shelfLife: number;
+    stockLevels: number;
+    inboundTransit: number;
+    foodSecurityIndex: number;
+    tradeVolume: number;
 }
 
 // ─── Domain Types ────────────────────────────────────────────────

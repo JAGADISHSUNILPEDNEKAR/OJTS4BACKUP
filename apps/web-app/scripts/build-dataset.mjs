@@ -299,6 +299,23 @@ async function main() {
         warningAudits: audits.filter(a => a.status === 'Warning').length,
         criticalAlerts: alerts.filter(a => a.severity === 'CRITICAL').length,
         warningAlerts: alerts.filter(a => a.severity === 'WARNING').length,
+        // Persona-specific metrics (static demo values for Phase 1-6)
+        soilHealth: 87,
+        harvestYield: 4.2,
+        complianceScore: 96,
+        onTimeDelivery: 94.2,
+        fuelEfficiency: 7.4,
+        anomalyCount: totalRows > 0 ? alerts.length / (totalRows / 1000) : 0, // Mock anomaly density
+        pendingAudits: audits.filter(a => a.status === 'Warning' || a.status === 'Failed').length,
+        trustScore: 99.97,
+        proofValidity: 100,
+        productJourney: 8, // Average touchpoints
+        sustainabilityRating: 4.8,
+        shelfLife: 14.5, // days
+        stockLevels: 82, // %
+        inboundTransit: 12, // units
+        foodSecurityIndex: 78,
+        tradeVolume: totalSales > 1000000 ? totalSales / 1000000 : totalSales, // in Millions if large
     };
     writeFileSync(resolve(PUBLIC_DATA_DIR, 'stats.json'), JSON.stringify(stats));
     console.log(`[build-dataset] Wrote stats.json`);
