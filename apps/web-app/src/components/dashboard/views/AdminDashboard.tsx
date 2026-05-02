@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fetchShipments, fetchAlerts, fetchStats, createShipment, requestAudit, Shipment, Alert, DatasetStats, getCurrentUser } from '@/lib/api';
+import { can } from '@/lib/permissions';
+import type { Capability } from '@/lib/roles.config';
 
 const LiveTelemetryMap = dynamic(() => import('@/components/maps/LiveTelemetryMap'), { ssr: false });
 
@@ -45,7 +47,7 @@ export default function AdminDashboard() {
   const handleInitiateShipment = async () => {
     try {
       const newShipment = await createShipment({
-        farmer_id: '00000000-0000-0000-0000-000000000000',
+        farmer_id: getCurrentUser()?.id || '00000000-0000-0000-0000-000000000000',
         destination: 'New Destination',
       });
       alert(`Shipment initiated: ${newShipment.id}`);
