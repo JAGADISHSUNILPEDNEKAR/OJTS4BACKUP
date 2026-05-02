@@ -44,11 +44,11 @@ export default function LogisticsDashboard() {
     const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
 
     const metrics = [
-        { label: 'On-time Delivery', value: '94.2%', delta: '+1.8% vs last week', tone: 'good',
+        { label: 'On-time Delivery', value: stats ? `${stats.onTimeDelivery}%` : '—', delta: 'Delivered vs delayed', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> },
-        { label: 'Fuel Efficiency', value: '7.4 km/L', delta: '+0.3 vs fleet avg', tone: 'good',
+        { label: 'Fuel Efficiency', value: stats ? `${stats.fuelEfficiency} km/L` : '—', delta: 'Demo — fleet telemetry pending', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="22" x2="15" y2="22"></line><line x1="4" y1="9" x2="14" y2="9"></line><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg> },
-        { label: 'Anomalies (24h)', value: stats ? fmt(stats.tempViolations + stats.routeDeviations) : '—', delta: 'Temp + route deviations', tone: 'warn',
+        { label: 'Anomalies (24h)', value: stats ? fmt(stats.anomalyCount) : '—', delta: 'Temp + route deviations', tone: 'warn',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg> },
         { label: 'Active Routes', value: loading ? '—' : inTransit.length.toString(), delta: 'In transit now', tone: 'neutral',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="10" r="3"></circle><path d="M12 2a8 8 0 0 0-8 8c0 4.4 8 12 8 12s8-7.6 8-12a8 8 0 0 0-8-8z"></path></svg> },
