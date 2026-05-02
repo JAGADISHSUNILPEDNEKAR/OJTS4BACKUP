@@ -42,8 +42,9 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    # SUPERADMIN intentionally excluded — must be provisioned out-of-band, not via public registration.
     role: Optional[Literal[
-        "SUPERADMIN", "COMPANY", "AUDITOR", "FARMER", 
+        "COMPANY", "AUDITOR", "FARMER",
         "LOGISTICS", "RETAILER", "GOVERNMENT", "CONSUMER", "USER"
     ]] = "USER"
     organization_id: Optional[UUID] = None

@@ -38,3 +38,4 @@ target/
 # Dataset - ignore raw CSV (150MB) but allow gzipped (48MB) for Vercel build
 Dataset/*.csv
 !Dataset/*.csv.gz
+infra/Dataset/
