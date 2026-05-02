@@ -9,7 +9,7 @@ from aiokafka import AIOKafkaProducer
 from database import engine, get_db, AsyncSessionLocal, Base
 from models import User, Organization
 from schemas import UserResponse, UserUpdate
-from core.dependencies import get_current_user_from_token, RoleChecker
+from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from core.config import settings
 
 app = FastAPI(title="Origin User Service")
@@ -99,7 +99,7 @@ async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db_with_rls),
-    current_user: User = Depends(RoleChecker(["ADMIN", "SUPERADMIN"])),
+    current_user: User = Depends(RoleChecker([UserRole.SUPERADMIN])),
 ):
     """List all users (admin only, paginated)."""
     result = await db.execute(
@@ -111,7 +111,7 @@ async def list_users(
 async def get_user_by_id(
     id: str,
     db: AsyncSession = Depends(get_db_with_rls),
-    current_user: User = Depends(RoleChecker(["ADMIN", "SUPERADMIN"]))
+    current_user: User = Depends(RoleChecker([UserRole.SUPERADMIN]))
 ):
     result = await db.execute(select(User).where(User.id == id))
     user = result.scalars().first()
