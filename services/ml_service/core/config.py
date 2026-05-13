@@ -12,10 +12,11 @@ class Settings(BaseSettings):
     INTERNAL_API_KEY: str = os.getenv("INTERNAL_API_KEY", "dev-secret-key")
 
     # Refuse to start if INTERNAL_API_KEY is still the committed dev default.
-    # Set REQUIRE_INTERNAL_API_KEY=true in production so a misconfigured deploy
-    # crashes loudly instead of accepting service-to-service calls with the
-    # public dev secret.
-    REQUIRE_INTERNAL_API_KEY: bool = os.getenv("REQUIRE_INTERNAL_API_KEY", "false").lower() == "true"
+    # Defaults to true so a misconfigured production deploy crashes loudly
+    # instead of accepting service-to-service calls with the public dev secret.
+    # Local dev / docker-compose / pytest must explicitly opt out by setting
+    # REQUIRE_INTERNAL_API_KEY=false in env.
+    REQUIRE_INTERNAL_API_KEY: bool = os.getenv("REQUIRE_INTERNAL_API_KEY", "true").lower() == "true"
 
     @property
     def DATABASE_URL(self) -> str:

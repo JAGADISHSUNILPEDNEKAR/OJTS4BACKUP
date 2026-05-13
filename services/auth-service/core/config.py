@@ -47,10 +47,12 @@ vwIDAQAB
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes max
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
 
-    # Refuse to start if Vault keys can't be loaded. Set to true in production
-    # so a Vault outage crashes the pod (orchestrator restarts) rather than
-    # silently signing JWTs with the dev keys committed above.
-    REQUIRE_VAULT_KEYS: bool = False
+    # Refuse to start if Vault keys can't be loaded. Defaults to true so a
+    # misconfigured production deploy crashes the pod (orchestrator restarts)
+    # rather than silently signing JWTs with the dev keys committed above.
+    # Local dev / docker-compose / pytest must explicitly opt out by setting
+    # REQUIRE_VAULT_KEYS=false in env.
+    REQUIRE_VAULT_KEYS: bool = True
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/origin"
     REDIS_URL: str = "redis://localhost:6379"

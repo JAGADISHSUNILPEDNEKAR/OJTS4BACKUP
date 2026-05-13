@@ -68,6 +68,9 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - REDIS_URL=redis://redis:6379
+      # Local dev: there is no Vault in compose, so allow startup with the
+      # committed dev JWT keys. Production must NOT set this.
+      - REQUIRE_VAULT_KEYS=false
 
   user-service:
     build:
@@ -85,6 +88,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Local dev: no Vault — allow the dev INTERNAL_API_KEY. Production must NOT set this.
+      - REQUIRE_INTERNAL_API_KEY=false
 
   iot-ingestion-service:
     build:
@@ -103,6 +108,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Local dev: no Vault — allow the dev INTERNAL_API_KEY. Production must NOT set this.
+      - REQUIRE_INTERNAL_API_KEY=false
 
   alert-service:
     build:

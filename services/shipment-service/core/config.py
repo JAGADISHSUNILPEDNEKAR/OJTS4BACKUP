@@ -27,9 +27,11 @@ vwIDAQAB
     INTERNAL_API_KEY: str = "dev-secret-key"
 
     # Refuse to start if INTERNAL_API_KEY is still the committed dev default.
-    # Set to true in production so a misconfigured deploy crashes loudly
+    # Defaults to true so a misconfigured production deploy crashes loudly
     # instead of authenticating service-to-service calls with a public secret.
-    REQUIRE_INTERNAL_API_KEY: bool = False
+    # Local dev / docker-compose / pytest must explicitly opt out by setting
+    # REQUIRE_INTERNAL_API_KEY=false in env.
+    REQUIRE_INTERNAL_API_KEY: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
