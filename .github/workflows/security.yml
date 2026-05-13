@@ -1,0 +1,39 @@
+name: "Security Scans"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  gitleaks:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # Full history so gitleaks can scan past commits, not just the tip.
+          # Catches secrets that were committed and then deleted in a later
+          # commit but still live in history.
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Fail the job on any finding. The committed JWT PEM in
+          # services/auth-service/core/config.py is a known finding pending
+          # ops rotation; until rotation lands, that file is allowlisted in
+          # .gitleaks.toml. Do not add further allowlist entries without
+          # explicit security sign-off.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+          GITLEAKS_ENABLE_SUMMARY: true

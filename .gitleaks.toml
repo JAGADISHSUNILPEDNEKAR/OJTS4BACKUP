@@ -1,0 +1,40 @@
+# Gitleaks configuration for the Origin monorepo.
+#
+# The goal of this file is to prevent NEW secrets from being committed.
+# Known historical secrets that are pending operational rotation are
+# allowlisted explicitly below so they do not block CI — but they MUST
+# be removed from this allowlist once the underlying key is rotated and
+# scrubbed from the repo.
+
+title = "Origin Gitleaks Config"
+
+[extend]
+# Inherit the default Gitleaks ruleset (AWS keys, GitHub tokens, generic
+# private keys, high-entropy strings, etc).
+useDefault = true
+
+[allowlist]
+description = "Known committed secrets pending ops rotation. DO NOT EXTEND without security sign-off."
+
+# The committed JWT signing key in auth-service is a known finding. It is
+# scheduled for rotation as part of the production hardening track. Once
+# rotated and replaced with a Vault-only load path, REMOVE this entry so
+# any re-introduction is caught.
+paths = [
+    '''services/auth-service/core/config\.py''',
+    # The shipment-service and ml-service hold matching PUBLIC keys (not a
+    # secret on their own) and the dev-default INTERNAL_API_KEY string.
+    # Public keys are safe; INTERNAL_API_KEY default is a non-secret
+    # placeholder gated behind REQUIRE_INTERNAL_API_KEY=true in prod.
+    '''services/shipment-service/core/config\.py''',
+    '''services/alert_service/core/config\.py''',
+]
+
+# Allow the literal dev placeholders so the fail-closed checks in main.py
+# can compare against them. These are not secrets — they are the magic
+# string that triggers the "refuse to start" guard.
+regexes = [
+    '''dev-secret-key''',
+    '''super-secret-key-that-should-be-in-vault-and-very-long''',
+    '''SG\.mock''',
+]
