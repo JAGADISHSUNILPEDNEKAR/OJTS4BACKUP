@@ -21,9 +21,13 @@ def test_inference_engine():
 
 @pytest.mark.asyncio
 async def test_ml_precheck_flow():
+    # /precheck is service-to-service only — gated on X-Internal-Key.
+    # In CI we run with REQUIRE_INTERNAL_API_KEY=false, so INTERNAL_API_KEY
+    # keeps its default "dev-secret-key" and we authenticate with that.
+    headers = {"X-Internal-Key": "dev-secret-key"}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # High-risk case
-        resp = await ac.post("/api/v1/ml/precheck", json={
+        resp = await ac.post("/api/v1/ml/precheck", headers=headers, json={
             "filename": "malicious.sh",
             "content_type": "text/x-shellscript",
             "destination": "Somalia"
@@ -32,9 +36,9 @@ async def test_ml_precheck_flow():
         assert resp.json()["status"] == "REJECTED"
         assert resp.json()["risk_score"] > 80.0
         assert resp.json()["insights"]["destination_flag"] is True
-        
+
         # Low-risk case
-        resp = await ac.post("/api/v1/ml/precheck", json={
+        resp = await ac.post("/api/v1/ml/precheck", headers=headers, json={
             "filename": "invoice.pdf",
             "content_type": "application/pdf",
             "destination": "USA"

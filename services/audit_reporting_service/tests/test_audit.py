@@ -62,7 +62,10 @@ async def override_get_db_with_rls():
     yield MockSession()
 
 async def override_current_user():
-    return CurrentUser(id=str(uuid.uuid4()), role="ADMIN")
+    # The /shipment/{id}/proof endpoint accepts AUDITOR, GOVERNMENT,
+    # COMPANY, or FARMER. ADMIN is no longer a recognized role since
+    # commit c24d14a (legacy ADMIN cleanup).
+    return CurrentUser(id=str(uuid.uuid4()), role="AUDITOR")
 
 app.dependency_overrides[get_db] = override_get_db
 app.dependency_overrides[get_db_with_rls] = override_get_db_with_rls
