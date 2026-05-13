@@ -29,9 +29,6 @@ async def startup_event():
     except Exception as e:
         print(f"Warning: Kafka could not connect. {e}")
 
-    # Shutdown
-    task.cancel()
-
 async def get_db_with_rls(
     current_user: User = Depends(get_current_user_from_token)
 ):

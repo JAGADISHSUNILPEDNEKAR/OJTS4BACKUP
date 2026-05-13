@@ -1,3 +1,5 @@
+import logging
+
 from kafka_producer import publish_message
 from pydantic import BaseModel
 from sqlalchemy.future import select
