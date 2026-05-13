@@ -58,11 +58,25 @@ async def verify_hmac(request: Request):
     # Fetch real secret from Vault
     secret = await vault.get_device_secret(device_id)
     if not secret:
-        # Fallback to mock only if Vault is disabled or in dev mode
-        if not vault.enabled:
-             secret = "mock-device-secret"
-        else:
-             raise HTTPException(status_code=401, detail="Device secret not found in Vault")
+        if vault.enabled:
+            # Vault is configured but has no entry for this device — never
+            # silently substitute a shared mock secret in that case.
+            raise HTTPException(status_code=401, detail="Device secret not found in Vault")
+        # Vault disabled. In production REQUIRE_VAULT_DEVICE_SECRETS=true
+        # makes this path fail loudly; without that guard, any device with
+        # a valid X-Device-Id header could publish telemetry signed with
+        # the literal string below.
+        if settings.REQUIRE_VAULT_DEVICE_SECRETS:
+            logging.error(
+                "Vault disabled and REQUIRE_VAULT_DEVICE_SECRETS=true. "
+                "Refusing to authenticate device %s with the shared mock secret.",
+                device_id,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Device secret store unavailable",
+            )
+        secret = "mock-device-secret"
              
     expected = hmac.new(secret.encode('utf-8') if isinstance(secret, str) else secret, body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature, expected):

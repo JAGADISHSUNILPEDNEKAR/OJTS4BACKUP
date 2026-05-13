@@ -99,6 +99,10 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Local dev: no Vault in compose — allow the shared mock device
+      # secret fallback so seeded fixtures can post telemetry. Production
+      # must NOT set this; the default is fail-closed.
+      - REQUIRE_VAULT_DEVICE_SECRETS=false
 
   ml-service:
     build:
@@ -119,6 +123,9 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Local dev: no real SendGrid wired in compose — allow the SG.mock
+      # placeholder so the service can boot. Production must NOT set this.
+      - REQUIRE_SENDGRID_KEY=false
 
   escrow-service:
     build:
