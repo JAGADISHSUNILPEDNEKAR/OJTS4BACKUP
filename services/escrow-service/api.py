@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 import logging
+from sqlalchemy.future import select
 from pydantic import BaseModel
-from escrow import process_fund_hold, PSBTTriggerRequest, SIGNATURE_STORE, THRESHOLD, finalize_escrow
+from escrow import process_fund_hold, PSBTTriggerRequest, THRESHOLD, finalize_escrow
+from database import AsyncSessionLocal
+from models import EscrowState
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from schemas import CurrentUser
 
@@ -36,24 +39,44 @@ async def sign_psbt(
 ):
     if request.participant_id != current_user.id:
         raise HTTPException(status_code=403, detail="Cannot sign for another participant")
-        
+
     shipment_id = request.shipment_id
-    
-    if shipment_id not in SIGNATURE_STORE:
-        raise HTTPException(status_code=404, detail="Shipment PSBT not found or not initialized in local store.")
-        
-    store = SIGNATURE_STORE[shipment_id]
-    
-    if store["status"] == "finalized":
-        return {"status": "ALREADY_FINALIZED", "shipment_id": shipment_id}
-        
-    store["signers"].add(request.participant_id)
-    current_count = len(store["signers"])
-    logger.info(f"Registered signature for {shipment_id} from {request.participant_id}. Total: {current_count}/{THRESHOLD}")
-    
-    if current_count >= THRESHOLD:
-        store["status"] = "finalized"
-        await finalize_escrow(shipment_id)
-        return {"status": "FINALIZED", "shipment_id": shipment_id, "message": "Threshold reached. Broadcasting transaction."}
-        
-    return {"status": "SIGNED", "shipment_id": shipment_id, "signatures_count": current_count}
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(EscrowState).where(EscrowState.shipment_id == shipment_id)
+        )
+        escrow = result.scalar_one_or_none()
+
+        if escrow is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Shipment PSBT not found or not initialized.",
+            )
+
+        if escrow.status == "finalized":
+            return {"status": "ALREADY_FINALIZED", "shipment_id": shipment_id}
+
+        signers = list(escrow.signers or [])
+        if request.participant_id not in signers:
+            signers.append(request.participant_id)
+            escrow.signers = signers
+
+        current_count = len(signers)
+        logger.info(
+            f"Registered signature for {shipment_id} from {request.participant_id}. "
+            f"Total: {current_count}/{THRESHOLD}"
+        )
+
+        if current_count >= THRESHOLD:
+            escrow.status = "finalized"
+            await session.commit()
+            await finalize_escrow(shipment_id)
+            return {
+                "status": "FINALIZED",
+                "shipment_id": shipment_id,
+                "message": "Threshold reached. Broadcasting transaction.",
+            }
+
+        await session.commit()
+        return {"status": "SIGNED", "shipment_id": shipment_id, "signatures_count": current_count}
