@@ -70,9 +70,9 @@ async def consume_alerts():
     except asyncio.CancelledError:
         logger.info("Kafka consumer task cancelled.")
     except Exception as e:
-        logger.error(f"Error in consumer: {e}")
+        logger.exception(f"Error in consumer: {e}")
     finally:
         try:
             await consumer.stop()
-        except:
-            pass
+        except Exception as stop_err:
+            logger.warning(f"Failed to stop Kafka consumer cleanly: {stop_err}")
