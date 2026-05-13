@@ -293,7 +293,38 @@ function mockUserId(email: string): string {
 }
 
 // ─── Auth Endpoints ──────────────────────────────────────────────
+
+/**
+ * Build the mock auth response and persist tokens + user. Used by login()
+ * and register() when running in static-data mode (no backend exists), or
+ * as a fallback in dev when the backend is unreachable.
+ */
+function applyMockAuth(email: string, role: UserRoleString) {
+    const mockData = {
+        access_token: 'm_dev_token_' + btoa(email),
+        refresh_token: 'm_dev_refresh',
+        user: {
+            id: mockUserId(email),
+            email,
+            role,
+            display_name: MOCK_ROLE_DISPLAY_NAMES[role] || email.split('@')[0],
+        },
+    };
+    setTokens(mockData.access_token, mockData.refresh_token);
+    setUser(mockData.user);
+    return mockData;
+}
+
 export async function login(email: string, password: string, totpCode?: string) {
+    // Static-data mode is the demo deployment: there is no backend to call,
+    // so going through fetch only generates flaky cross-browser failures
+    // ("Failed to fetch" on Chrome, "Load failed" on Safari, mixed-content
+    // blocks, etc.) The mock IS the auth layer in this mode — short-circuit
+    // to it directly.
+    if (USE_STATIC_DATA) {
+        return applyMockAuth(email, inferMockRole(email));
+    }
+
     const body: Record<string, string> = { email, password };
     if (totpCode) body.totp_code = totpCode;
 
@@ -314,30 +345,23 @@ export async function login(email: string, password: string, totpCode?: string) 
         if (data.user) setUser(data.user);
         return data;
     } catch (err) {
-        // Only fall through to mock auth on a real network failure in dev/static mode.
-        // Auth rejections (wrong password, locked account) must always surface.
+        // Live-mode dev fallback: only fall through on a real network failure.
+        // Auth rejections (wrong password, locked account) must always surface
+        // to the user — never grant a session on a 401.
         if (!MOCK_AUTH_ENABLED || !isNetworkError(err)) {
             throw err;
         }
         console.warn('Backend unreachable, using mock login for dev', err);
-        const role = inferMockRole(email);
-        const mockData = {
-            access_token: 'm_dev_token_' + btoa(email),
-            refresh_token: 'm_dev_refresh',
-            user: {
-                id: mockUserId(email),
-                email,
-                role,
-                display_name: MOCK_ROLE_DISPLAY_NAMES[role] || email.split('@')[0]
-            }
-        };
-        setTokens(mockData.access_token, mockData.refresh_token);
-        setUser(mockData.user);
-        return mockData;
+        return applyMockAuth(email, inferMockRole(email));
     }
 }
 
 export async function register(email: string, password: string, role?: string) {
+    if (USE_STATIC_DATA) {
+        const assignedRole = (role as UserRoleString) || inferMockRole(email);
+        return applyMockAuth(email, assignedRole);
+    }
+
     try {
         const res = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
@@ -360,25 +384,20 @@ export async function register(email: string, password: string, role?: string) {
         }
         console.warn('Backend unreachable, using mock register for dev', err);
         const assignedRole = (role as UserRoleString) || inferMockRole(email);
-        const mockData = {
-            access_token: 'm_dev_token_' + btoa(email),
-            refresh_token: 'm_dev_refresh',
-            user: {
-                id: mockUserId(email),
-                email,
-                role: assignedRole,
-                display_name: MOCK_ROLE_DISPLAY_NAMES[assignedRole as UserRoleString] || email.split('@')[0]
-            }
-        };
-        setTokens(mockData.access_token, mockData.refresh_token);
-        setUser(mockData.user);
-        return mockData;
+        return applyMockAuth(email, assignedRole);
     }
 }
 
 export async function refreshAccessToken(): Promise<boolean> {
     const refreshToken = getRefreshToken();
     if (!refreshToken) return false;
+
+    // In static-data mode the mock refresh token has nowhere to refresh
+    // against. Treat any existing token as still-valid so a stray 401 from
+    // a misconfigured fetch can't log the user out of the demo.
+    if (USE_STATIC_DATA || refreshToken.startsWith('m_dev_')) {
+        return true;
+    }
 
     try {
         const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
