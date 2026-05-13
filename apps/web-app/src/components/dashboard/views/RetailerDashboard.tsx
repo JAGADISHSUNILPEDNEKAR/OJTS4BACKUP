@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { fetchShipments, Shipment } from '@/lib/api';
+import { fetchShipments, fetchStats, Shipment, DatasetStats } from '@/lib/api';
 
 /**
  * Dashboard view for the RETAILER role.
@@ -12,14 +12,19 @@ import { fetchShipments, Shipment } from '@/lib/api';
 export default function RetailerDashboard() {
     const router = useRouter();
     const [inbound, setInbound] = useState<Shipment[]>([]);
+    const [stats, setStats] = useState<DatasetStats | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             try {
-                const result = await fetchShipments(1);
-                setInbound(result.data.slice(0, 8));
+                const [shipmentsData, statsData] = await Promise.all([
+                    fetchShipments(1),
+                    fetchStats(),
+                ]);
+                setInbound(shipmentsData.data.slice(0, 8));
+                setStats(statsData);
             } catch (err) {
                 console.error('Failed to load retailer data', err);
             }
@@ -36,14 +41,19 @@ export default function RetailerDashboard() {
         alert('Record Sale — logs unit movement and updates shelf-life signals.');
     };
 
+    const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString();
+
+    // Shelf Life, Stock Levels, and Spoilage Rate are still demo values
+    // (no retailer inventory / product perishability feed yet — see build-dataset.mjs).
+    // Inbound Transit is derived from the real in-transit shipment count.
     const metrics = [
-        { label: 'Avg Shelf Life', value: '6.2 days', delta: 'Across active SKUs', tone: 'neutral',
+        { label: 'Avg Shelf Life', value: stats ? `${stats.shelfLife} days` : '—', delta: 'Demo — perishability lookup pending', tone: 'neutral',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> },
-        { label: 'Stock Levels', value: '82%', delta: '+4% above target', tone: 'good',
+        { label: 'Stock Levels', value: stats ? `${stats.stockLevels}%` : '—', delta: 'Demo — inventory feed pending', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="2" y1="12" x2="22" y2="12"></line></svg> },
-        { label: 'Inbound Transit', value: loading ? '—' : inbound.length.toString(), delta: 'Arriving today', tone: 'neutral',
+        { label: 'Inbound Transit', value: stats ? fmt(stats.inboundTransit) : '—', delta: 'Shipments in transit', tone: 'neutral',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> },
-        { label: 'Spoilage Rate', value: '1.4%', delta: '−0.6% vs last month', tone: 'good',
+        { label: 'Spoilage Rate', value: '1.4%', delta: 'Demo — cold-chain feed pending', tone: 'good',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> },
     ];
 
