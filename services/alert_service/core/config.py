@@ -24,6 +24,13 @@ vwIDAQAB
     KAFKA_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     SENDGRID_API_KEY: str = os.getenv("SENDGRID_API_KEY", "SG.mock")
 
+    # Refuse to start if SENDGRID_API_KEY is still the literal "SG.mock"
+    # placeholder. Defaults to true so a production deploy that forgets to
+    # wire SendGrid does not silently no-op every alert email.
+    # Local dev / docker-compose / pytest must explicitly opt out by setting
+    # REQUIRE_SENDGRID_KEY=false in env.
+    REQUIRE_SENDGRID_KEY: bool = os.getenv("REQUIRE_SENDGRID_KEY", "true").lower() == "true"
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

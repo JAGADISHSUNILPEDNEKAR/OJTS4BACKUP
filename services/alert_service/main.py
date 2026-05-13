@@ -4,6 +4,7 @@ from typing import List
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results, get_recent_alerts
+from core.config import settings
 from core.database import engine, Base, AsyncSessionLocal
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from schemas import CurrentUser
@@ -25,7 +26,17 @@ consumer_task = None
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Alert Service...")
-    
+
+    # Refuse to start in production with the committed dev SendGrid placeholder.
+    # Without this guard a misconfigured deploy silently no-ops every alert
+    # email, which is worse than failing to boot.
+    if settings.REQUIRE_SENDGRID_KEY and settings.SENDGRID_API_KEY == "SG.mock":
+        raise RuntimeError(
+            "REQUIRE_SENDGRID_KEY=true but SENDGRID_API_KEY is the committed "
+            "'SG.mock' placeholder. Set SENDGRID_API_KEY to a real SendGrid "
+            "API key (or set REQUIRE_SENDGRID_KEY=false for local dev)."
+        )
+
     # Create DB structures and seed defaults
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
