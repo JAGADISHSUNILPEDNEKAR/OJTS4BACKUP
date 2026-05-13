@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { fetchStats, DatasetStats } from '@/lib/api';
 
 /**
  * Dashboard view for the CONSUMER role.
@@ -13,6 +14,19 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 export default function ConsumerDashboard() {
     const [lookupId, setLookupId] = useState('');
     const [activeJourney, setActiveJourney] = useState<typeof SAMPLE_JOURNEY | null>(null);
+    const [stats, setStats] = useState<DatasetStats | null>(null);
+
+    useEffect(() => {
+        fetchStats()
+            .then(setStats)
+            .catch(err => console.error('Failed to load consumer stats', err));
+    }, []);
+
+    const fmt = (n: number) => {
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+        if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+        return n.toString();
+    };
 
     const handleScan = () => {
         alert('QR scanner — opens camera on the mobile app. Demo: try entering a sample lot ID below.');
@@ -26,12 +40,14 @@ export default function ConsumerDashboard() {
         setActiveJourney(SAMPLE_JOURNEY);
     };
 
+    // Verified Lots Tracked + Provenance Coverage are derived from real CSV data.
+    // Sustainability is still demo (no ESG feed wired — see build-dataset.mjs).
     const metrics = [
-        { label: 'Verified Lots Scanned', value: '1.2M', sub: 'Across all shoppers',
+        { label: 'Verified Lots Tracked', value: stats ? fmt(stats.totalShipments) : '—', sub: 'Shipments in the registry',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
-        { label: 'Avg Sustainability', value: 'A−', sub: 'Carbon + water scoring',
+        { label: 'Sustainability Rating', value: stats ? `${stats.sustainabilityRating} / 5` : '—', sub: 'Demo — ESG feed pending',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg> },
-        { label: 'Provenance Coverage', value: '98%', sub: 'Origin-to-shelf traceability',
+        { label: 'Provenance Coverage', value: stats ? `${stats.proofValidity}%` : '—', sub: 'Shipments with ML proof attached',
           icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> },
     ];
 
