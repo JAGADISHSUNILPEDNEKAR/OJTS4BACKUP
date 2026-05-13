@@ -1,0 +1,121 @@
+name: "CI: Lint & Test"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    name: "pytest: ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth-service
+          - user-service
+          - shipment-service
+          - iot-ingestion-service
+          - ml_service
+          - alert_service
+          - escrow-service
+          - audit_reporting_service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install service deps
+        working-directory: services/${{ matrix.service }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Test dependencies. Some services have requirements.dev.txt
+          # (escrow-service does); others don't. itsdangerous is required
+          # by starlette.middleware.sessions, which auth-service imports
+          # but doesn't declare directly.
+          if [ -f requirements.dev.txt ]; then
+            pip install -r requirements.dev.txt
+          fi
+          pip install pytest pytest-asyncio httpx itsdangerous
+
+      - name: Run pytest
+        working-directory: services/${{ matrix.service }}
+        env:
+          PYTHONPATH: .
+          # Fail-closed flags default to true (so production refuses to
+          # boot with dev secrets). Tests don't have Vault / real keys,
+          # so opt out explicitly for the test environment.
+          REQUIRE_VAULT_KEYS: "false"
+          REQUIRE_INTERNAL_API_KEY: "false"
+          REQUIRE_VAULT_DEVICE_SECRETS: "false"
+          REQUIRE_SENDGRID_KEY: "false"
+        run: |
+          # Some services may not have a tests/ dir yet — skip cleanly
+          # rather than failing the matrix entry.
+          if [ -d tests ] && ls tests/test_*.py >/dev/null 2>&1; then
+            python -m pytest tests/ -v --tb=short
+          else
+            echo "No tests/ directory or test files found — skipping."
+          fi
+
+  python-lint:
+    name: "ruff: lint Python services"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint
+        # Start narrow: F821 (undefined name — guaranteed runtime error)
+        # and E9 (syntax errors). The codebase currently has ~40 F401
+        # unused-import findings that should be cleaned up in a separate
+        # sweep; expand the rule set after that lands.
+        run: ruff check --select F821,E9 services/
+
+  web-checks:
+    name: "web-app: eslint + tsc"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web-app/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc --noEmit
