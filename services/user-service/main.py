@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -138,6 +139,7 @@ async def submit_kyc(
     current_user: User = Depends(get_current_user_from_token)
 ):
     event_payload = {
+        "event_id": str(uuid.uuid4()),
         "event": "kyc.submitted",
         "user_id": str(current_user.id),
         "document_url": request.document_url,

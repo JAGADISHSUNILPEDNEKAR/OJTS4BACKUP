@@ -4,6 +4,7 @@ import json
 import logging
 import hmac
 import hashlib
+import uuid
 from aiokafka import AIOKafkaProducer
 
 from database import get_db
@@ -113,6 +114,7 @@ async def ingest_telemetry(payload: BulkTelemetryUpload, db: AsyncSession = Depe
     if producer:
         for reading in payload.readings:
             event = {
+                "event_id": str(uuid.uuid4()),
                 "event": "sensor.ingested",
                 "device_id": reading.device_id,
                 "shipment_id": str(reading.shipment_id),

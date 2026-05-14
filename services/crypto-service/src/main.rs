@@ -169,6 +169,7 @@ async fn main() {
                         }
 
                         let event = serde_json::json!({
+                            "event_id": uuid::Uuid::new_v4().to_string(),
                             "root": root_hex,
                             "txid": txid,
                             "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
@@ -257,6 +258,7 @@ async fn main() {
                                             ) {
                                                 Ok(generated_psbt) => {
                                                     let response = serde_json::json!({
+                                                        "event_id": uuid::Uuid::new_v4().to_string(),
                                                         "status": "PSBT_GENERATED",
                                                         "shipment_id": shipment_id,
                                                         "escrow_id": format!("ESC-{}", shipment_id),

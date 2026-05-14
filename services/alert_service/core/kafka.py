@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from core.config import settings
@@ -79,6 +80,7 @@ async def consume_ml_results():
                         await dispatch_alert(shipment_id, score, severity)
 
                         alert_event = {
+                            "event_id": str(uuid.uuid4()),
                             "event": "alert.created",
                             "shipment_id": shipment_id,
                             "severity": severity,

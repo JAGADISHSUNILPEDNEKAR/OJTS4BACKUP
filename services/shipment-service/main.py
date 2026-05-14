@@ -140,8 +140,12 @@ async def create_shipment(
     await db.commit()
     await db.refresh(new_shipment)
     
-    # 4. Publish Kafka event
+    # 4. Publish Kafka event. event_id is a per-message UUID — consumers dedupe
+    # against it (e.g. via Redis SETNX) so a producer retry after a partial
+    # failure can't double-process. See infra/db/migrations + consumer-side
+    # dedup follow-up.
     event = {
+        "event_id": str(uuid.uuid4()),
         "event": "shipment.created",
         "shipment_id": str(shipment_id),
         "farmer_id": farmer_id,
@@ -238,6 +242,7 @@ async def custody_handoff(
     
     # 3. Publish to Kafka
     event = {
+        "event_id": str(uuid.uuid4()),
         "event": "custody.handoff",
         "shipment_id": str(shipment.id),
         "previous_custodian_id": str(previous_custodian_id),
@@ -338,6 +343,7 @@ async def init_escrow(
     
     # Matching the PSBTTriggerRequest expected by escrow-service and crypto-service
     event = {
+        "event_id": str(uuid.uuid4()),
         "shipment_id": str(shipment.id),
         "amount_usd": request.amount_usd,
         "amount_btc": request.amount_btc,

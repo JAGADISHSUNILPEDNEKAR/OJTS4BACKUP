@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from core.config import settings
@@ -73,6 +74,7 @@ async def consume_events():
                     score = inference_engine.predict(features)
 
                     result_event = {
+                        "event_id": str(uuid.uuid4()),
                         "event": "ml.inference.completed",
                         "shipment_id": shipment_id,
                         "score": score,

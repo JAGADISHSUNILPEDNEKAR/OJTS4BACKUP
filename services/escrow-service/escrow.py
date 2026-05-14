@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from kafka_producer import publish_message
 from pydantic import BaseModel
@@ -42,6 +43,7 @@ async def process_fund_hold(data: PSBTTriggerRequest) -> dict:
     
     # Generate the request payload dynamically
     request_payload = {
+        "event_id": str(uuid.uuid4()),
         "shipment_id": data.shipment_id,
         "amount_usd": data.amount_usd,
         "amount_btc": data.amount_btc,
@@ -81,4 +83,8 @@ async def finalize_escrow(shipment_id: str):
             escrow.status = "finalized"
             await session.commit()
             
-    await publish_message("escrow.psbt.finalize", shipment_id, {"shipment_id": shipment_id})
+    await publish_message(
+        "escrow.psbt.finalize",
+        shipment_id,
+        {"event_id": str(uuid.uuid4()), "shipment_id": shipment_id},
+    )
