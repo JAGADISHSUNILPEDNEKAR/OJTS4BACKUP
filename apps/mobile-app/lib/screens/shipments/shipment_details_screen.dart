@@ -1,54 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 
-class ShipmentDetailsScreen extends StatelessWidget {
+class ShipmentDetailsScreen extends StatefulWidget {
   final String shipmentId;
 
   const ShipmentDetailsScreen({super.key, required this.shipmentId});
 
   @override
+  State<ShipmentDetailsScreen> createState() => _ShipmentDetailsScreenState();
+}
+
+class _ShipmentDetailsScreenState extends State<ShipmentDetailsScreen> {
+  late Future<Map<String, dynamic>> _shipmentFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _shipmentFuture = OriginApiClient.instance.fetchShipmentById(widget.shipmentId);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _shipmentFuture = OriginApiClient.instance.fetchShipmentById(widget.shipmentId);
+    });
+    await _shipmentFuture;
+  }
+
+  String _shortId(String id) => id.length >= 8 ? id.substring(0, 8) : id;
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Shipment $shipmentId'),
+        title: Text('Shipment ${_shortId(widget.shipmentId)}'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusHeader(context),
-            const SizedBox(height: 24),
-            Text('Timeline', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            _buildTimelineEvents(),
-            const SizedBox(height: 24),
-            Text('Details', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            _buildDetailsCard(),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Map', style: Theme.of(context).textTheme.titleLarge),
-                TextButton.icon(
-                  onPressed: () {
-                    context.push('/sensor-details/SNS-${shipmentId.split('-').last}');
-                  },
-                  icon: const Icon(Icons.sensors),
-                  label: const Text('Live Sensors'),
-                ),
-              ],
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _shipmentFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return _ErrorView(message: snapshot.error.toString(), onRetry: _refresh);
+          }
+          final shipment = snapshot.data!;
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _StatusHeader(shipment: shipment),
+                  const SizedBox(height: 24),
+                  Text('Timeline', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  _Timeline(shipment: shipment),
+                  const SizedBox(height: 24),
+                  Text('Details', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  _DetailsCard(shipment: shipment),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Sensors', style: Theme.of(context).textTheme.titleLarge),
+                      TextButton.icon(
+                        onPressed: () {
+                          context.push('/sensor-details/${widget.shipmentId}');
+                        },
+                        icon: const Icon(Icons.sensors),
+                        label: const Text('Live Sensors'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _MapPlaceholder(),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            _buildMapPlaceholder(context),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
+}
 
-  Widget _buildStatusHeader(BuildContext context) {
+class _StatusHeader extends StatelessWidget {
+  final Map<String, dynamic> shipment;
+  const _StatusHeader({required this.shipment});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = shipment['status']?.toString() ?? 'unknown';
+    final isDelivered = status.toLowerCase() == 'delivered';
+    final color = isDelivered ? Colors.green : Colors.orange;
     return Card(
       elevation: 2,
       child: Padding(
@@ -59,30 +110,97 @@ class ShipmentDetailsScreen extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Current Status', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey)),
+                Text(
+                  'Current Status',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey),
+                ),
                 const SizedBox(height: 4),
-                Text('In Transit', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.orange, fontWeight: FontWeight.bold)),
+                Text(
+                  status,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
               ],
             ),
-            const Icon(Icons.local_shipping, size: 48, color: Colors.orange),
+            Icon(Icons.local_shipping, size: 48, color: color),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildTimelineEvents() {
+class _Timeline extends StatelessWidget {
+  final Map<String, dynamic> shipment;
+  const _Timeline({required this.shipment});
+
+  String _format(String? iso) {
+    if (iso == null) return '—';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    final local = dt.toLocal();
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} '
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = shipment['status']?.toString() ?? 'unknown';
+    final createdAt = shipment['created_at']?.toString();
+    final updatedAt = shipment['updated_at']?.toString();
+    final isDelivered = status.toLowerCase() == 'delivered';
+
     return Column(
       children: [
-        _buildTimelineTile('Origin: Farm A', 'Packed and sealed', 'Oct 24, 08:00 AM', true),
-        _buildTimelineTile('Checkpoint X', 'Quality Check Passed', 'Oct 24, 11:30 AM', true),
-        _buildTimelineTile('In Transit', 'Driver: John Doe', 'Oct 24, 12:45 PM', false, isCurrent: true),
-        _buildTimelineTile('Destination', 'Pending Arrival', 'Est: Oct 25', false, isLast: true),
+        _TimelineTile(
+          title: 'Created',
+          subtitle: 'Shipment recorded on chain',
+          time: _format(createdAt),
+          isCompleted: true,
+        ),
+        _TimelineTile(
+          title: 'Last Update',
+          subtitle: 'Status: $status',
+          time: _format(updatedAt),
+          isCompleted: isDelivered,
+          isCurrent: !isDelivered,
+        ),
+        _TimelineTile(
+          title: isDelivered ? 'Delivered' : 'Awaiting delivery',
+          subtitle: isDelivered ? 'Custody complete' : 'In transit',
+          time: isDelivered ? _format(updatedAt) : 'pending',
+          isCompleted: isDelivered,
+          isLast: true,
+        ),
       ],
     );
   }
+}
 
-  Widget _buildTimelineTile(String title, String subtitle, String time, bool isCompleted, {bool isCurrent = false, bool isLast = false}) {
+class _TimelineTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String time;
+  final bool isCompleted;
+  final bool isCurrent;
+  final bool isLast;
+
+  const _TimelineTile({
+    required this.title,
+    required this.subtitle,
+    required this.time,
+    required this.isCompleted,
+    this.isCurrent = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dotColor = isCompleted
+        ? Colors.green
+        : (isCurrent ? Colors.orange : Colors.grey.shade400);
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -94,10 +212,7 @@ class ShipmentDetailsScreen extends StatelessWidget {
                 Container(
                   width: 16,
                   height: 16,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isCompleted ? Colors.green : (isCurrent ? Colors.orange : Colors.grey.shade400),
-                  ),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
                 ),
                 if (!isLast)
                   Expanded(
@@ -120,7 +235,7 @@ class ShipmentDetailsScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
+                      Expanded(child: Text(subtitle, style: TextStyle(color: Colors.grey.shade600))),
                       Text(time, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                     ],
                   ),
@@ -132,8 +247,21 @@ class ShipmentDetailsScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildDetailsCard() {
+class _DetailsCard extends StatelessWidget {
+  final Map<String, dynamic> shipment;
+  const _DetailsCard({required this.shipment});
+
+  @override
+  Widget build(BuildContext context) {
+    final id = shipment['id']?.toString() ?? '—';
+    final farmerId = shipment['farmer_id']?.toString() ?? '—';
+    final custodianId = shipment['current_custodian_id']?.toString() ?? '—';
+    final destination = shipment['destination']?.toString() ?? '—';
+    final risk = shipment['risk_score'];
+    final manifestUrl = shipment['manifest_url']?.toString();
+
     return Card(
       elevation: 2,
       child: Padding(
@@ -141,67 +269,112 @@ class ShipmentDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('Product', 'Organic Coffee Beans'),
+            _DetailRow(label: 'Shipment ID', value: id),
             const Divider(),
-            _buildDetailRow('Quantity', '500 kg'),
+            _DetailRow(label: 'Farmer', value: farmerId),
             const Divider(),
-            _buildDetailRow('Batch No.', 'BCH-2023-8821'),
+            _DetailRow(label: 'Current Custodian', value: custodianId),
             const Divider(),
-            _buildDetailRow('Carrier', 'FastFreight Ltd.'),
+            _DetailRow(label: 'Destination', value: destination),
+            if (risk is num) ...[
+              const Divider(),
+              _DetailRow(label: 'Risk Score', value: '${(risk * 100).toStringAsFixed(1)}%'),
+            ],
+            if (manifestUrl != null && manifestUrl.isNotEmpty) ...[
+              const Divider(),
+              _DetailRow(label: 'Manifest', value: manifestUrl),
+            ],
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildDetailRow(String label, String value) {
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(
+            width: 130,
+            child: Text(label, style: const TextStyle(color: Colors.grey)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              softWrap: true,
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMapPlaceholder(BuildContext context) {
+class _MapPlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      height: 240,
+      height: 200,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white12),
-        image: const DecorationImage(
-          image: NetworkImage('https://maps.googleapis.com/maps/api/staticmap?center=Brooklyn+Bridge,New+York,NY&zoom=13&size=600x300&maptype=roadmap&markers=color:blue%7Clabel:S%7C40.702147,-74.015794&markers=color:green%7Clabel:G%7C40.711614,-74.012318&markers=color:red%7Clabel:C%7C40.718217,-73.998284&key=YOUR_API_KEY'), // Mock placeholder URL for aesthetics (will just fail gracefully or show if valid)
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black54, BlendMode.darken),
-        ),
       ),
-      child: Center(
+      child: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.location_on, size: 32, color: Colors.white),
-            ),
+            Icon(Icons.map_outlined, size: 48, color: Colors.white54),
+            SizedBox(height: 8),
+            Text('Map view coming soon', style: TextStyle(color: Colors.white54)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 12),
+            const Text(
+              'Failed to load shipment',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
             Text(
-              'Live Interactive Map',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  const Shadow(color: Colors.black, blurRadius: 4),
-                ],
-              ),
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
             ),
           ],
         ),

@@ -61,6 +61,24 @@ class OriginApiClient extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> fetchShipmentById(String id) async {
+    final response = await _authGet('shipments/$id');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch shipment $id (${response.statusCode})');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchShipmentRisk(String id) async {
+    final response = await _authGet('shipments/$id/risk');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch risk for $id (${response.statusCode})');
+    }
+  }
+
   // Escrows
   Future<List<dynamic>> fetchEscrows() async {
     final response = await _authGet('escrows');
