@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../core/api_client.dart';
 
 class OriginDashboardScreen extends StatelessWidget {
   const OriginDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final role = OriginApiClient.instance.currentRole;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Origin Dashboard'),
+        title: Text('Origin Dashboard · $role'),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

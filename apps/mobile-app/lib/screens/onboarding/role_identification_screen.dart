@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 import '../../widgets/primary_button.dart';
 
 class RoleIdentificationScreen extends StatefulWidget {
@@ -18,6 +19,25 @@ class _RoleIdentificationScreenState extends State<RoleIdentificationScreen> {
   void dispose() {
     _businessIdController.dispose();
     super.dispose();
+  }
+
+  // Maps the user-facing role labels from RoleSelectionScreen to the backend's
+  // role enum used by auth-service (services/auth-service/schemas.py).
+  String _backendRole(String label) {
+    switch (label) {
+      case 'Farmer':
+        return 'FARMER';
+      case 'Logistics':
+        return 'LOGISTICS';
+      case 'Buyer':
+        return 'COMPANY';
+      case 'Auditor':
+        return 'AUDITOR';
+      case 'Consumer':
+        return 'CONSUMER';
+      default:
+        return 'USER';
+    }
   }
 
   @override
@@ -110,7 +130,11 @@ class _RoleIdentificationScreenState extends State<RoleIdentificationScreen> {
               PrimaryButton(
                 text: 'Complete Setup',
                 onPressed: () {
-                  // Complete onboarding and go to login
+                  // Remember the role pick so demo-mode logins land on the
+                  // right dashboard. The real backend's JWT role still wins
+                  // when reachable.
+                  OriginApiClient.instance
+                      .setPendingDemoRole(_backendRole(widget.role));
                   context.go('/login');
                 },
               ),

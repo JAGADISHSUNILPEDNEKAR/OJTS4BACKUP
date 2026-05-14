@@ -25,6 +25,16 @@ class OriginApiClient extends ChangeNotifier {
   String? get accessToken => _accessToken;
   bool get isAuthenticated => _accessToken != null;
 
+  /// Set by the onboarding RoleIdentificationScreen so demo-mode logins use
+  /// the role the user just picked, rather than guessing from the email.
+  /// One of the backend role enum values (FARMER, AUDITOR, LOGISTICS,
+  /// COMPANY, RETAILER, GOVERNMENT, CONSUMER, SUPERADMIN). Ignored when the
+  /// backend is reachable — real JWTs are authoritative.
+  String? _pendingDemoRole;
+  void setPendingDemoRole(String role) {
+    _pendingDemoRole = role.toUpperCase();
+  }
+
   /// Decodes the JWT's `sub` claim, which auth-service populates with the
   /// user's UUID (services/auth-service/main.py uses subject=str(user.id) on
   /// create_access_token). Returns null when there's no token or the JWT
@@ -112,13 +122,13 @@ class OriginApiClient extends ChangeNotifier {
       // no tunnel, etc.) synthesize a successful login so the public APK
       // doesn't dead-end at the sign-in page. Downstream screens that hit
       // real services will still surface their own errors.
-      _accessToken = _stubDemoJwt(email);
+      _accessToken = _stubDemoJwt(email, _pendingDemoRole);
       notifyListeners();
       return {'access_token': _accessToken, 'demo_mode': true};
     } on Exception {
       // Same fallback for SocketException / no route to host — these don't
       // surface as ClientException on Android.
-      _accessToken = _stubDemoJwt(email);
+      _accessToken = _stubDemoJwt(email, _pendingDemoRole);
       notifyListeners();
       return {'access_token': _accessToken, 'demo_mode': true};
     }
@@ -152,14 +162,17 @@ class OriginApiClient extends ChangeNotifier {
 
   // Builds an unsigned JWT with a deterministic `sub` derived from the email,
   // so currentUserId works in demo mode. Not accepted by any real backend.
-  // Role is inferred from the email so RBAC routing works offline.
-  static String _stubDemoJwt(String email) {
+  // Role is taken from the explicit demo override when set (onboarding choice)
+  // and falls back to email-keyword inference.
+  static String _stubDemoJwt(String email, String? override) {
     String b64(String s) =>
         base64Url.encode(utf8.encode(s)).replaceAll('=', '');
     final header = b64('{"alg":"none","typ":"JWT"}');
     final sub = 'demo-${email.hashCode.toUnsigned(32).toRadixString(16)}';
     final iat = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final role = _roleFromEmail(email);
+    final role = (override != null && override.isNotEmpty)
+        ? override
+        : _roleFromEmail(email);
     final payload =
         b64('{"sub":"$sub","email":"$email","role":"$role","iat":$iat}');
     return '$header.$payload.${b64("demo")}';

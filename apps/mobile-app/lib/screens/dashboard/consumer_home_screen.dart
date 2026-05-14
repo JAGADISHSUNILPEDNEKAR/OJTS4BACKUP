@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 
 class ConsumerHomeScreen extends StatelessWidget {
   const ConsumerHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final role = OriginApiClient.instance.currentRole;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Origin'),
+        title: Text('Origin · $role'),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

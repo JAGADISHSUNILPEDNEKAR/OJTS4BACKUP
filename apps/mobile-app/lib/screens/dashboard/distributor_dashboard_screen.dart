@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 
 class DistributorDashboardScreen extends StatelessWidget {
   const DistributorDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final role = OriginApiClient.instance.currentRole;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Logistics Dashboard'),
+        title: Text('Logistics Dashboard · $role'),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

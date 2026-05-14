@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../core/api_client.dart';
 
 class AuditorDashboardScreen extends StatelessWidget {
   const AuditorDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final role = OriginApiClient.instance.currentRole;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auditor Dashboard'),
+        title: Text('Auditor Dashboard · $role'),
         automaticallyImplyLeading: false,
       ),
       body: ListView(

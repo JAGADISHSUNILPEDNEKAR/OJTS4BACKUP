@@ -11,7 +11,7 @@ class AdminDashboardScreen extends StatelessWidget {
     final isSuper = role == 'SUPERADMIN';
     return Scaffold(
       appBar: AppBar(
-        title: Text(isSuper ? 'Admin Dashboard' : '${_title(role)} Dashboard'),
+        title: Text('${isSuper ? 'Admin' : _title(role)} Dashboard · $role'),
         automaticallyImplyLeading: false,
       ),
       body: Padding(
