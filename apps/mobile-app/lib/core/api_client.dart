@@ -134,6 +134,35 @@ class OriginApiClient extends ChangeNotifier {
     }
   }
 
+  /// POST /api/v1/shipments/{id}/custody — submit a chain-of-custody event
+  /// signed by the device's ECDSA key. Backend verifies the signature against
+  /// the registered custodian pubkey (trust-on-first-use binds on first
+  /// handoff).
+  Future<Map<String, dynamic>> handoffCustody({
+    required String shipmentId,
+    required String custodianId,
+    required String ecdsaSignatureHex,
+    required String publicKeyHex,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/shipments/$shipmentId/custody'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'custodian_id': custodianId,
+        'ecdsa_signature': ecdsaSignatureHex,
+        'public_key': publicKeyHex,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Handoff failed (${response.statusCode}): ${response.body}');
+    }
+  }
+
   Future<Map<String, dynamic>> initEscrow({
     required String shipmentId,
     required String buyerId,

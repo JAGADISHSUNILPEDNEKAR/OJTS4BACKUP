@@ -1,34 +1,36 @@
-import 'package:flutter/material.dart';
-import 'package:elliptic/elliptic.dart';
-import 'package:ecdsa/ecdsa.dart';
 import 'dart:convert';
+import 'package:crypto/crypto.dart' as crypto;
+import 'package:ecdsa/ecdsa.dart';
+import 'package:elliptic/elliptic.dart';
+import 'package:flutter/material.dart';
 import 'package:hex/hex.dart';
-import 'package:http/http.dart' as http;
 
+import '../../core/api_client.dart';
 import '../../core/custodian_key_store.dart';
 
 class CustodyHandoffScreen extends StatefulWidget {
-  const CustodyHandoffScreen({super.key});
+  /// Optional pre-filled shipment ID. When null the user has to type one.
+  final String? shipmentId;
+  const CustodyHandoffScreen({super.key, this.shipmentId});
 
   @override
   State<CustodyHandoffScreen> createState() => _CustodyHandoffScreenState();
 }
 
 class _CustodyHandoffScreenState extends State<CustodyHandoffScreen> {
-  final String _shipmentId = "SHP-XYZ987";
-  final TextEditingController _recipientIdController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-  String _statusMessage = "";
+  late final TextEditingController _shipmentIdController;
+  final _newCustodianIdController = TextEditingController();
+  String _statusMessage = '';
+  bool _isStatusError = false;
   bool _isLoading = false;
 
-  // Loaded from secure storage in initState. Stable across app launches —
-  // backend signature verification needs a consistent custodian pubkey.
   PrivateKey? _privKey;
   PublicKey? _pubKey;
 
   @override
   void initState() {
     super.initState();
+    _shipmentIdController = TextEditingController(text: widget.shipmentId ?? '');
     _loadKeys();
   }
 
@@ -42,141 +44,166 @@ class _CustodyHandoffScreenState extends State<CustodyHandoffScreen> {
   }
 
   Future<void> _signAndSync() async {
-    if (_recipientIdController.text.isEmpty || _locationController.text.isEmpty) {
-      setState(() => _statusMessage = "Please fill all fields.");
+    final shipmentId = _shipmentIdController.text.trim();
+    final newCustodianId = _newCustodianIdController.text.trim();
+
+    if (shipmentId.isEmpty || newCustodianId.isEmpty) {
+      setState(() {
+        _statusMessage = 'Enter both shipment ID and new custodian ID.';
+        _isStatusError = true;
+      });
       return;
     }
 
     final privKey = _privKey;
     final pubKey = _pubKey;
     if (privKey == null || pubKey == null) {
-      setState(() => _statusMessage = "Device key not ready yet — try again in a moment.");
+      setState(() {
+        _statusMessage = 'Device key not ready yet — try again in a moment.';
+        _isStatusError = true;
+      });
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _statusMessage = "Signing payload offline...";
+      _statusMessage = 'Signing payload offline...';
+      _isStatusError = false;
     });
 
     try {
-      // 1. Construct Payload
-      final payload = {
-        "shipment_id": _shipmentId,
-        "recipient_id": _recipientIdController.text,
-        "location": _locationController.text,
-        "timestamp": DateTime.now().toIso8601String(),
-        "public_key": pubKey.toHex()
-      };
+      // Message format must match the backend (services/shipment-service/main.py
+      // around line 188): f"{shipment_id}:{custodian_id}" encoded as UTF-8.
+      final message = utf8.encode('$shipmentId:$newCustodianId');
 
-      final payloadString = jsonEncode(payload);
+      // python-ecdsa's VerifyingKey.verify() defaults to hashfunc=sha1, so
+      // we hash here and pass the 20-byte digest into the Dart signer
+      // (which treats its input as the pre-hashed digest).
+      final digest = crypto.sha1.convert(message).bytes;
 
-      // 2. ECDSA Offline Sign
-      final hash = List<int>.from(utf8.encode(payloadString));
-      final sig = signature(privKey, hash);
+      final sig = signature(privKey, digest);
       final sigHex = HEX.encode(sig.toDER());
 
+      setState(() => _statusMessage = 'Signed. Syncing to Origin API...');
+
+      final result = await OriginApiClient.instance.handoffCustody(
+        shipmentId: shipmentId,
+        custodianId: newCustodianId,
+        ecdsaSignatureHex: sigHex,
+        publicKeyHex: pubKey.toHex(),
+      );
+
+      if (!mounted) return;
       setState(() {
-         _statusMessage = "Signed. Syncing to Origin API...";
+        _statusMessage = 'Handoff verified by backend.\n'
+            'Status: ${result['status']}\n'
+            'Sig: ${sigHex.substring(0, 20)}...';
+        _isStatusError = false;
       });
-
-      // 3. Sync to Backend API (Simulated if no connection)
-      final apiUri = Uri.parse('http://localhost:8000/api/v1/shipments/$_shipmentId/custody');
-      
-      try {
-        final response = await http.post(
-          apiUri,
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "payload": payload,
-            "signature": sigHex
-          }).toString()
-        );
-        
-        if (response.statusCode == 200 || response.statusCode == 201) {
-           setState(() => _statusMessage = "Sync Successful!\nSig: ${sigHex.substring(0,20)}...");
-        } else {
-           setState(() => _statusMessage = "Sync Failed: ${response.statusCode} (API Unreachable)");
-        }
-      } catch (e) {
-        // Offline-first approach - would save to local sqflite here
-        setState(() => _statusMessage = "Offline Mode: Custody event saved locally.\nSig: ${sigHex.substring(0,20)}...");
-      }
-
     } catch (e) {
-      setState(() => _statusMessage = "Error: $e");
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = e.toString();
+        _isStatusError = true;
+      });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _shipmentIdController.dispose();
+    _newCustodianIdController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Origin - Handover'),
+        title: const Text('Custody Handoff'),
         centerTitle: true,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Shipment ID", style: TextStyle(color: Colors.grey)),
-                  Text(_shipmentId, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ]
-              )
-            ),
-            const SizedBox(height: 24),
             TextField(
-              controller: _recipientIdController,
+              controller: _shipmentIdController,
               decoration: const InputDecoration(
-                labelText: 'Recipient ID (e.g. Farmer, Driver)',
+                labelText: 'Shipment ID (UUID)',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.local_shipping_outlined),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _locationController,
+              controller: _newCustodianIdController,
               decoration: const InputDecoration(
-                labelText: 'Current Location (Lat, Lon / Name)',
+                labelText: 'New Custodian ID (UUID)',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_outline),
               ),
             ),
-            const SizedBox(height: 32),
-            ElevatedButton(
+            const SizedBox(height: 24),
+            if (_pubKey != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white24),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Your device pubkey (P-256)',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_pubKey!.toHex().substring(0, 32)}…',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
               onPressed: _isLoading ? null : _signAndSync,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.fingerprint),
+              label: Text(_isLoading ? 'Signing...' : 'Sign & Transfer Custody'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
               ),
-              child: _isLoading 
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text("Sign & Transfer Custody", style: TextStyle(fontSize: 16)),
             ),
             const SizedBox(height: 24),
-            Center(
-               child: Text(
-                 _statusMessage, 
-                 style: TextStyle(
-                   color: _statusMessage.contains("Error") || _statusMessage.contains("Failed") 
-                      ? Colors.redAccent 
-                      : Colors.greenAccent,
-                   fontWeight: FontWeight.w500
-                 ),
-                 textAlign: TextAlign.center,
-               )
-            )
+            if (_statusMessage.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (_isStatusError ? Colors.redAccent : Colors.greenAccent)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _statusMessage,
+                  style: TextStyle(
+                    color: _isStatusError ? Colors.redAccent : Colors.greenAccent,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

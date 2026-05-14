@@ -144,10 +144,13 @@ final GoRouter appRouter = GoRouter(
       ],
     ),
 
-    // Temp placeholder for Handover
+    // Custody handoff (optionally pre-fills shipment ID from query)
     GoRoute(
       path: '/handover',
-      builder: (context, state) => const CustodyHandoffScreen(),
+      builder: (context, state) {
+        final shipmentId = state.uri.queryParameters['shipmentId'];
+        return CustodyHandoffScreen(shipmentId: shipmentId);
+      },
     ),
     
     // Shipment Details
