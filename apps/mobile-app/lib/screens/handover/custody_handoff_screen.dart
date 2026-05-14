@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:hex/hex.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/custodian_key_store.dart';
+
 class CustodyHandoffScreen extends StatefulWidget {
   const CustodyHandoffScreen({super.key});
 
@@ -18,17 +20,25 @@ class _CustodyHandoffScreenState extends State<CustodyHandoffScreen> {
   final TextEditingController _locationController = TextEditingController();
   String _statusMessage = "";
   bool _isLoading = false;
-  
-  // Local volatile mock keypair. In prod, this would be in SecureStorage.
-  late PrivateKey _privKey;
-  late PublicKey _pubKey;
+
+  // Loaded from secure storage in initState. Stable across app launches —
+  // backend signature verification needs a consistent custodian pubkey.
+  PrivateKey? _privKey;
+  PublicKey? _pubKey;
 
   @override
   void initState() {
     super.initState();
-    final ec = getSecp256k1();
-    _privKey = ec.generatePrivateKey();
-    _pubKey = _privKey.publicKey;
+    _loadKeys();
+  }
+
+  Future<void> _loadKeys() async {
+    final priv = await CustodianKeyStore.loadOrCreate();
+    if (!mounted) return;
+    setState(() {
+      _privKey = priv;
+      _pubKey = priv.publicKey;
+    });
   }
 
   Future<void> _signAndSync() async {
@@ -36,7 +46,14 @@ class _CustodyHandoffScreenState extends State<CustodyHandoffScreen> {
       setState(() => _statusMessage = "Please fill all fields.");
       return;
     }
-    
+
+    final privKey = _privKey;
+    final pubKey = _pubKey;
+    if (privKey == null || pubKey == null) {
+      setState(() => _statusMessage = "Device key not ready yet — try again in a moment.");
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _statusMessage = "Signing payload offline...";
@@ -49,14 +66,14 @@ class _CustodyHandoffScreenState extends State<CustodyHandoffScreen> {
         "recipient_id": _recipientIdController.text,
         "location": _locationController.text,
         "timestamp": DateTime.now().toIso8601String(),
-        "public_key": _pubKey.toHex()
+        "public_key": pubKey.toHex()
       };
 
       final payloadString = jsonEncode(payload);
-      
+
       // 2. ECDSA Offline Sign
       final hash = List<int>.from(utf8.encode(payloadString));
-      final sig = signature(_privKey, hash);
+      final sig = signature(privKey, hash);
       final sigHex = HEX.encode(sig.toDER());
 
       setState(() {
