@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+/// Manual-entry verifier. A real QR camera scanner needs a native plugin
+/// (e.g. `mobile_scanner`) and runtime camera permissions, which aren't
+/// wired up in this app. Until they are, the user pastes or types a
+/// shipment UUID and hits "Verify", which navigates to the result screen
+/// where the actual GET /shipments/{id} call happens.
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
 
@@ -9,100 +14,102 @@ class QRScannerScreen extends StatefulWidget {
 }
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
-  bool _isFlashOn = false;
+  final _idController = TextEditingController();
 
-  void _onScanSuccess() {
-    // Navigate to the verification result screen passing some mock param
-    context.push('/verification-result?batchId=BT-99238');
+  @override
+  void dispose() {
+    _idController.dispose();
+    super.dispose();
+  }
+
+  void _verify() {
+    final id = _idController.text.trim();
+    if (id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a shipment ID')),
+      );
+      return;
+    }
+    context.push('/verification-result?batchId=$id');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Mock Camera View
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _onScanSuccess, // Tap anywhere to mock scan success
-              child: Container(
-                color: Colors.black87,
-                child: const Center(
-                  child: Text(
-                    'Tap screen to mock scan QR code',
-                    style: TextStyle(color: Colors.white54, fontSize: 16),
-                  ),
+      appBar: AppBar(title: const Text('Verify Shipment')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 16),
+            Icon(
+              Icons.qr_code_2,
+              size: 96,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Enter Shipment ID',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Paste the UUID from a Origin QR code, or enter it manually.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _idController,
+              decoration: const InputDecoration(
+                labelText: 'Shipment ID (UUID)',
+                prefixIcon: Icon(Icons.fingerprint),
+              ),
+              onSubmitted: (_) => _verify(),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _verify,
+              icon: const Icon(Icons.verified_outlined),
+              label: const Text('Verify'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 18, color: Colors.white54),
+                        SizedBox(width: 8),
+                        Text(
+                          'Camera scanner',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Live camera QR decoding is not built into this app '
+                      'yet (would need the mobile_scanner plugin and '
+                      'runtime camera permissions). Manual entry hits the '
+                      'same backend GET /shipments/{id} call that a scanned '
+                      'code would.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-          
-          // App Bar Area (transparent)
-          Positioned(
-            top: 50,
-            left: 16,
-            right: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () => context.pop(),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isFlashOn = !_isFlashOn;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          
-          // Frame overlay
-          Center(
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.greenAccent, width: 2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          ),
-
-          // Bottom instruction text and fallback button
-          Positioned(
-            bottom: 60,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                const Text(
-                  'Align QR code within the frame',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                const SizedBox(height: 24),
-                TextButton(
-                  onPressed: () {
-                    context.push('/verification-result?batchId=MANUAL-ENTRY');
-                  },
-                  child: const Text(
-                    'Enter code manually',
-                    style: TextStyle(color: Colors.greenAccent, fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

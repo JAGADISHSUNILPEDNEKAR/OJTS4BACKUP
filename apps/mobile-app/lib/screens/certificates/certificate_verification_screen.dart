@@ -1,128 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class CertificateVerificationScreen extends StatefulWidget {
+/// Hardcoded "CERT-9921 / CERT-8834 / CERT-7712" search list previously
+/// pretended to verify certificates. There is no backend endpoint for any
+/// of those. Replaced with an honest pointer to the shipment proof flow,
+/// which is the real verification surface the system supports today.
+class CertificateVerificationScreen extends StatelessWidget {
   const CertificateVerificationScreen({super.key});
 
   @override
-  State<CertificateVerificationScreen> createState() =>
-      _CertificateVerificationScreenState();
-}
-
-class _CertificateVerificationScreenState
-    extends State<CertificateVerificationScreen> {
-  String _searchQuery = '';
-
-  final List<Map<String, dynamic>> _certificates = [
-    {
-      'id': 'CERT-9921',
-      'type': 'Organic Handling',
-      'issuer': 'Global Organic Trust',
-      'status': 'Valid',
-    },
-    {
-      'id': 'CERT-8834',
-      'type': 'Fair Trade',
-      'issuer': 'FairTrade Org',
-      'status': 'Expired',
-    },
-    {
-      'id': 'CERT-7712',
-      'type': 'Quality Assurance',
-      'issuer': 'QA Intl',
-      'status': 'Revoked',
-    },
-  ];
-
-  @override
   Widget build(BuildContext context) {
-    var filteredCerts = _certificates
-        .where((c) =>
-            c['id'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            c['type'].toLowerCase().contains(_searchQuery.toLowerCase()))
-        .toList();
-
     return Scaffold(
       appBar: AppBar(title: const Text('Verify Certificates')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search by ID or Type',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.link_off, size: 18, color: Colors.orange.shade300),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Certificate registry not deployed',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'There is no certificate service in the Origin '
+                      'backend yet — no registry to look up by ID, no '
+                      'issuer database, no revocation list. The search '
+                      'list this screen used to render was hardcoded.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
                 ),
               ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
-                });
-              },
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredCerts.length,
-              itemBuilder: (context, index) {
-                final cert = filteredCerts[index];
-                return _buildCertCard(cert);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCertCard(Map<String, dynamic> cert) {
-    Color statusColor;
-    IconData statusIcon;
-
-    switch (cert['status']) {
-      case 'Valid':
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        break;
-      case 'Expired':
-        statusColor = Colors.orange;
-        statusIcon = Icons.access_time;
-        break;
-      case 'Revoked':
-      default:
-        statusColor = Colors.red;
-        statusIcon = Icons.cancel;
-        break;
-    }
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: ListTile(
-        leading: Icon(Icons.workspace_premium, size: 40, color: Colors.blue.shade700),
-        title: Text(cert['type'], style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('Issuer: ${cert['issuer']}\nID: ${cert['id']}'),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(statusIcon, color: statusColor),
-            const SizedBox(height: 4),
-            Text(
-              cert['status'],
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'What you can verify today',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Shipment provenance: scan a shipment QR (or paste '
+                      'its UUID) to call GET /shipments/{id} and pull '
+                      "the chain-of-custody record. That's the real "
+                      'verification path the platform supports today.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => context.go('/qr-scanner'),
+                      icon: const Icon(Icons.qr_code_2),
+                      label: const Text('Verify a shipment'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
-        onTap: () {
-          if (cert['status'] == 'Valid') {
-            context.push('/certificate-proof/${cert['id']}');
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Cannot verify ${cert['status'].toLowerCase()} certificate.')),
-            );
-          }
-        },
       ),
     );
   }
