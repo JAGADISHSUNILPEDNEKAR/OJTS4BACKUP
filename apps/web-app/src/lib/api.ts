@@ -443,43 +443,38 @@ export async function fetchShipments(page = 1, filter = ''): Promise<PaginatedRe
     if (USE_STATIC_DATA) {
         return fetchStaticPage<Shipment>('shipments', filter, page);
     }
-    try {
-        const params = new URLSearchParams({ page: String(page), limit: '100' });
-        if (filter) params.set('status', filter);
-        const res = await authFetch(`${API_BASE_URL}/shipments?${params}`);
-        if (!res.ok) throw new Error('Failed to fetch shipments');
-        const data = await res.json();
-        return Array.isArray(data)
-            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
-            : data;
-    } catch (err) {
-        console.error('API connection failed', err);
-        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
-    }
+    const params = new URLSearchParams({ page: String(page), limit: '100' });
+    if (filter) params.set('status', filter);
+    const res = await authFetch(`${API_BASE_URL}/shipments?${params}`);
+    if (!res.ok) throw new Error(`Failed to fetch shipments (${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data)
+        ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+        : data;
 }
 
 export async function createShipment(data: Record<string, unknown>) {
-    try {
-        const formData = new FormData();
-        Object.keys(data).forEach(key => {
-            const val = data[key];
-            if (typeof val === 'string' || val instanceof Blob) {
-                formData.append(key, val);
-            } else {
-                formData.append(key, String(val));
-            }
-        });
-
-        const res = await authFetch(`${API_BASE_URL}/shipments`, {
-            method: 'POST',
-            body: formData,
-        });
-        if (!res.ok) throw new Error('Failed to create shipment');
-        return await res.json();
-    } catch {
-        const newShipment = { id: `MOCK-${Math.floor(Math.random() * 1000)}`, ...data, status: 'CREATED', risk_score: 0.1 } as Shipment;
-        return newShipment;
+    if (USE_STATIC_DATA) {
+        // Demo deployment: there's no backend to call. Return a synthesized
+        // success so the UI flow completes for the demo.
+        return { id: `MOCK-${Math.floor(Math.random() * 1000)}`, ...data, status: 'CREATED', risk_score: 0.1 } as Shipment;
     }
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+        const val = data[key];
+        if (typeof val === 'string' || val instanceof Blob) {
+            formData.append(key, val);
+        } else {
+            formData.append(key, String(val));
+        }
+    });
+
+    const res = await authFetch(`${API_BASE_URL}/shipments`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!res.ok) throw new Error(`Failed to create shipment (${res.status})`);
+    return await res.json();
 }
 
 // ─── Alerts ──────────────────────────────────────────────────────
@@ -487,51 +482,43 @@ export async function fetchAlerts(page = 1, filter = ''): Promise<PaginatedRespo
     if (USE_STATIC_DATA) {
         return fetchStaticPage<Alert>('alerts', filter, page);
     }
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts`);
-        if (!res.ok) throw new Error('Failed to fetch alerts');
-        const data = await res.json();
-        return Array.isArray(data)
-            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
-            : data;
-    } catch (err) {
-        console.error('API connection failed', err);
-        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
-    }
+    const res = await authFetch(`${API_BASE_URL}/alerts`);
+    if (!res.ok) throw new Error(`Failed to fetch alerts (${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data)
+        ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+        : data;
 }
 
 export async function acknowledgeAlert(alertId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to acknowledge alert');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, id: alertId };
     }
+    const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/acknowledge`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to acknowledge alert (${res.status})`);
+    return await res.json();
 }
 
 export async function ignoreAlert(alertId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to ignore alert');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, id: alertId };
     }
+    const res = await authFetch(`${API_BASE_URL}/alerts/${alertId}/ignore`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to ignore alert (${res.status})`);
+    return await res.json();
 }
 
 export async function bulkAcknowledgeAlerts(alertIds: string[]) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/alerts/bulk-acknowledge`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({ ids: alertIds }),
-        });
-        if (!res.ok) throw new Error('Failed to bulk acknowledge');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, count: alertIds.length };
     }
+    const res = await authFetch(`${API_BASE_URL}/alerts/bulk-acknowledge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ ids: alertIds }),
+    });
+    if (!res.ok) throw new Error(`Failed to bulk acknowledge (${res.status})`);
+    return await res.json();
 }
 
 // ─── Escrow ──────────────────────────────────────────────────────
@@ -539,47 +526,39 @@ export async function fetchEscrows(page = 1, filter = ''): Promise<PaginatedResp
     if (USE_STATIC_DATA) {
         return fetchStaticPage<Escrow>('escrows', filter, page);
     }
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows`);
-        if (!res.ok) throw new Error('Failed to fetch escrows');
-        const data = await res.json();
-        return Array.isArray(data)
-            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
-            : data;
-    } catch (err) {
-        console.error('API unavailable', err);
-        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
-    }
+    const res = await authFetch(`${API_BASE_URL}/escrows`);
+    if (!res.ok) throw new Error(`Failed to fetch escrows (${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data)
+        ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+        : data;
 }
 
 export async function settleEscrow(escrowId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to settle escrow');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, id: escrowId };
     }
+    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/settle`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to settle escrow (${res.status})`);
+    return await res.json();
 }
 
 export async function disputeEscrow(escrowId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to dispute escrow');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, id: escrowId };
     }
+    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/dispute`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to dispute escrow (${res.status})`);
+    return await res.json();
 }
 
 export async function releaseEscrow(escrowId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to release escrow');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, id: escrowId };
     }
+    const res = await authFetch(`${API_BASE_URL}/escrows/${escrowId}/release`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Failed to release escrow (${res.status})`);
+    return await res.json();
 }
 
 // ─── Audits ──────────────────────────────────────────────────────
@@ -587,65 +566,57 @@ export async function fetchAudits(page = 1, filter = ''): Promise<PaginatedRespo
     if (USE_STATIC_DATA) {
         return fetchStaticPage<Audit>('audits', filter, page);
     }
-    try {
-        const res = await authFetch(`${API_BASE_URL}/audits`);
-        if (!res.ok) throw new Error('Failed to fetch audits');
-        const data = await res.json();
-        return Array.isArray(data)
-            ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
-            : data;
-    } catch (err) {
-        console.error('API connection failed', err);
-        return { data: [], total: 0, page: 1, totalPages: 1, pageSize: 100 };
-    }
+    const res = await authFetch(`${API_BASE_URL}/audits`);
+    if (!res.ok) throw new Error(`Failed to fetch audits (${res.status})`);
+    const data = await res.json();
+    return Array.isArray(data)
+        ? { data, total: data.length, page: 1, totalPages: 1, pageSize: data.length }
+        : data;
 }
 
 export async function requestAudit(shipmentId: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/audits`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({ shipment_id: shipmentId }),
-        });
-        if (!res.ok) throw new Error('Failed to request audit');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, shipmentId, auditId: 'MOCK-AUD-999' };
     }
+    const res = await authFetch(`${API_BASE_URL}/audits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ shipment_id: shipmentId }),
+    });
+    if (!res.ok) throw new Error(`Failed to request audit (${res.status})`);
+    return await res.json();
 }
 
 // ─── Reports ─────────────────────────────────────────────────────
 export async function generateReport(reportType: string) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/reports/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({ type: reportType }),
-        });
-        if (!res.ok) throw new Error('Failed to generate report');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, type: reportType, url: '#' };
     }
+    const res = await authFetch(`${API_BASE_URL}/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ type: reportType }),
+    });
+    if (!res.ok) throw new Error(`Failed to generate report (${res.status})`);
+    return await res.json();
 }
 
 // ─── Settings / Profile ─────────────────────────────────────────
 export async function updateProfile(data: { displayName?: string; email?: string; preferences?: Record<string, boolean> }) {
-    try {
-        const res = await authFetch(`${API_BASE_URL}/users/me`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({
-                display_name: data.displayName,
-                email: data.email,
-                preferences: data.preferences
-            }),
-        });
-        if (!res.ok) throw new Error('Failed to update profile');
-        return await res.json();
-    } catch {
+    if (USE_STATIC_DATA) {
         return { success: true, ...data };
     }
+    const res = await authFetch(`${API_BASE_URL}/users/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+            display_name: data.displayName,
+            email: data.email,
+            preferences: data.preferences
+        }),
+    });
+    if (!res.ok) throw new Error(`Failed to update profile (${res.status})`);
+    return await res.json();
 }
 
 // ─── Global Search ────────────────────────────────────────────────
