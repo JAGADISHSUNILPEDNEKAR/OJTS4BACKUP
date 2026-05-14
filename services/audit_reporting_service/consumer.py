@@ -3,7 +3,15 @@ import json
 import logging
 from datetime import datetime, timezone
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from aiokafka.errors import KafkaConnectionError
+
+# Unit tests stub `aiokafka` via sys.modules['aiokafka'] = MagicMock() before
+# importing this module — a MagicMock isn't a package so submodule imports
+# raise ImportError. Fall back to Exception when aiokafka is mocked; in
+# production this resolves to the real KafkaConnectionError class.
+try:
+    from aiokafka.errors import KafkaConnectionError
+except ImportError:
+    KafkaConnectionError = Exception  # type: ignore[misc,assignment]
 
 from core.config import settings
 from database import AsyncSessionLocal
