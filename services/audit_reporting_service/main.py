@@ -11,8 +11,9 @@ from audits import router as audits_router
 from database import AsyncSessionLocal
 from schemas import CurrentUser
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("audit-reporting")
+from core.logging_config import configure as configure_logging
+configure_logging(service="audit-reporting-service")
+logger = logging.getLogger("audit-reporting-service")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

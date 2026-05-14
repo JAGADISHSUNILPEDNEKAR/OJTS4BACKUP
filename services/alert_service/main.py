@@ -11,6 +11,8 @@ from schemas import CurrentUser
 from models import AlertThreshold
 from sqlalchemy.future import select
 
+from core.logging_config import configure as configure_logging
+configure_logging(service="alert-service")
 logger = logging.getLogger("alert-service")
 
 app = FastAPI(title="Origin Alert Service")

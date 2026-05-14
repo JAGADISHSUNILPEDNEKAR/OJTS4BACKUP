@@ -1,4 +1,5 @@
 import json
+import logging
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -9,6 +10,10 @@ from models import User
 from schemas import UserResponse, UserUpdate
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from core.config import settings
+from core.logging_config import configure as configure_logging
+
+configure_logging(service="user-service")
+logger = logging.getLogger("user-service")
 
 app = FastAPI(title="Origin User Service")
 
@@ -34,7 +39,7 @@ async def startup_event():
     try:
         await producer.start()
     except Exception as e:
-        print(f"Warning: Kafka could not connect. {e}")
+        logger.warning("kafka producer connect failed", extra={"event": "kafka.connect_failed", "error": str(e)})
 
 async def get_db_with_rls(
     current_user: User = Depends(get_current_user_from_token)
@@ -143,6 +148,6 @@ async def submit_kyc(
         try:
             await producer.send_and_wait("kyc-events", event_payload)
         except Exception as e:
-            print(f"Failed to publish to Kafka: {e}")
+            logger.error("kafka publish failed", extra={"event": "kafka.publish_failed", "error": str(e)})
             
     return {"message": "KYC submitted successfully", "event_dispatched": True}

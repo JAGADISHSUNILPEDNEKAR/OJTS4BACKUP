@@ -1,6 +1,7 @@
 import uuid
 import json
 import asyncio
+import logging
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -15,6 +16,10 @@ from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from core.config import settings
 from core.s3_utils import upload_to_s3
 from core.pdf_generator import generate_shipment_proof
+from core.logging_config import configure as configure_logging
+
+configure_logging(service="shipment-service")
+logger = logging.getLogger("shipment-service")
 
 app = FastAPI(title="Origin Shipment Service")
 
@@ -52,7 +57,7 @@ async def startup_event():
     try:
         await producer.start()
     except Exception as e:
-        print(f"Warning: Kafka could not connect. {e}")
+        logger.warning("kafka producer connect failed", extra={"event": "kafka.connect_failed", "error": str(e)})
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -108,7 +113,7 @@ async def create_shipment(
             if precheck_result.get("status") == "REJECTED":
                 raise HTTPException(status_code=400, detail=f"Shipment rejected by ML precheck. Risk Score: {risk_score}")
     except httpx.RequestError as e:
-        print(f"ML Service Precheck request failed: {e}")
+        logger.error("ml precheck request failed", extra={"event": "ml.precheck_failed", "error": str(e)})
 
     shipment_id = uuid.uuid4()
     s3_key = f"manifests/{shipment_id}/{manifest.filename}"
@@ -118,7 +123,7 @@ async def create_shipment(
         file_content = await manifest.read()
         await asyncio.to_thread(upload_to_s3, file_content, settings.S3_BUCKET_NAME, s3_key)
     except Exception as e:
-        print(f"Failed to upload to S3: {e}")
+        logger.error("s3 upload failed", extra={"event": "s3.upload_failed", "error": str(e)})
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload manifest to storage")
     
     # 3. Save to DB
@@ -146,7 +151,7 @@ async def create_shipment(
         try:
             await producer.send_and_wait("shipment-events", event)
         except Exception as e:
-            print(f"Failed to publish to Kafka: {e}")
+            logger.error("kafka publish failed", extra={"event": "kafka.publish_failed", "error": str(e)})
             
     return new_shipment
 
@@ -214,7 +219,7 @@ async def custody_handoff(
         try:
             await producer.send_and_wait("shipment-events", event)
         except Exception as e:
-            print(f"Failed to publish to Kafka: {e}")
+            logger.error("kafka publish failed", extra={"event": "kafka.publish_failed", "error": str(e)})
     
     return {"status": "HANDOFF_VERIFIED", "shipment_id": str(shipment.id)}
 
@@ -321,7 +326,7 @@ async def init_escrow(
             # We publish to escrow.psbt.request which both escrow and crypto services can see
             await producer.send_and_wait("escrow.psbt.request", event)
         except Exception as e:
-            print(f"Failed to publish to Kafka: {e}")
+            logger.error("kafka publish failed", extra={"event": "kafka.publish_failed", "error": str(e)})
             
     return {"status": "ESCROW_INITIATED", "shipment_id": str(shipment.id)}
 

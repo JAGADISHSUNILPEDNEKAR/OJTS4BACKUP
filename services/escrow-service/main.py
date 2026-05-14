@@ -4,8 +4,9 @@ import logging
 import asyncio
 from api import router as escrow_router
 from consumer import consume_alerts
+from core.logging_config import configure as configure_logging
 
-logging.basicConfig(level=logging.INFO)
+configure_logging(service="escrow-service")
 logger = logging.getLogger("escrow-service")
 
 @asynccontextmanager

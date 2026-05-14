@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import timedelta
 from authlib.integrations.starlette_client import OAuth
@@ -14,6 +15,10 @@ from core.security import (
     create_refresh_token, decode_token, verify_totp,
 )
 from core.config import settings
+from core.logging_config import configure as configure_logging
+
+configure_logging(service="auth-service")
+logger = logging.getLogger("auth-service")
 
 app = FastAPI(title="Origin Auth Service")
 # Authlib needs a session middleware for OAuth2 state
@@ -60,7 +65,7 @@ async def get_redis():
         )
         await _redis.ping()
     except Exception as e:
-        print(f"Warning: Redis not available ({e}). Lockout disabled.")
+        logger.warning("redis unavailable, lockout disabled", extra={"event": "redis.unavailable", "error": str(e)})
         _redis = None
     return _redis
 
@@ -69,7 +74,7 @@ async def get_redis():
 async def startup_event():
     # Load keys from Vault if available
     if await settings.load_vault_keys():
-         print("Successfully loaded JWT signing keys from Vault.")
+         logger.info("loaded JWT signing keys from Vault", extra={"event": "vault.keys_loaded"})
     elif settings.REQUIRE_VAULT_KEYS:
         # Fail loudly. Signing JWTs with the repo's dev keys in production
         # is equivalent to giving every reader of the repo admin tokens.
@@ -80,7 +85,7 @@ async def startup_event():
             "secret/data/origin/auth-service/jwt_keys."
         )
     else:
-         print("Using default hardcoded JWT signing keys (DEV ONLY).")
+         logger.warning("using hardcoded JWT signing keys (DEV ONLY)", extra={"event": "vault.dev_keys"})
 
     # Schema is owned by infra/db/migrations/*.sql, applied by
     # infra/db/run_migrations.sh (run by compose's db-migrate service locally

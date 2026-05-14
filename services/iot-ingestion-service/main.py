@@ -11,9 +11,12 @@ from models import SensorReading
 from schemas import BulkTelemetryUpload
 from core.vault import VaultClient
 from core.config import settings
+from core.logging_config import configure as configure_logging
+
+configure_logging(service="iot-ingestion-service")
+logger = logging.getLogger("iot-ingestion-service")
 
 app = FastAPI(title="Origin IoT Ingestion Service")
-logging.basicConfig(level=logging.INFO)
 
 from prometheus_fastapi_instrumentator import Instrumentator
 Instrumentator().instrument(app).expose(app)
@@ -40,7 +43,7 @@ async def startup_event():
     try:
         await producer.start()
     except Exception as e:
-        print(f"Warning: Kafka could not connect. {e}")
+        logger.warning("kafka producer connect failed", extra={"event": "kafka.connect_failed", "error": str(e)})
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -118,6 +121,6 @@ async def ingest_telemetry(payload: BulkTelemetryUpload, db: AsyncSession = Depe
             try:
                 await producer.send_and_wait("iot-events", event)
             except Exception as e:
-                print(f"Failed to publish to Kafka: {e}")
+                logger.error("kafka publish failed", extra={"event": "kafka.publish_failed", "error": str(e)})
         
     return {"status": "INGESTED", "count": len(payload.readings)}

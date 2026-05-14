@@ -14,3 +14,4 @@ cryptography
 authlib
 httpx
 prometheus-fastapi-instrumentator
+python-json-logger

@@ -11,3 +11,4 @@ PyJWT
 cryptography
 aiokafka
 prometheus-fastapi-instrumentator
+python-json-logger

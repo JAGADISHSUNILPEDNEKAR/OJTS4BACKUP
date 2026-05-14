@@ -14,3 +14,4 @@ joblib
 httpx
 pytest-asyncio
 prometheus-fastapi-instrumentator
+python-json-logger

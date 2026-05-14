@@ -12,3 +12,4 @@ cryptography
 reportlab
 boto3
 prometheus-fastapi-instrumentator
+python-json-logger

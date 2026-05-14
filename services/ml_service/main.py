@@ -7,6 +7,8 @@ from core.kafka import start_kafka_producer, stop_kafka_producer, consume_events
 from core.dependencies import verify_internal_key
 from models.inference import inference_engine
 
+from core.logging_config import configure as configure_logging
+configure_logging(service="ml-service")
 logger = logging.getLogger("ml-service")
 
 app = FastAPI(title="Origin ML Service")

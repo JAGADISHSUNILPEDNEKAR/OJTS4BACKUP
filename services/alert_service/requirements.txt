@@ -11,3 +11,4 @@ PyJWT
 cryptography
 sendgrid
 prometheus-fastapi-instrumentator
+python-json-logger

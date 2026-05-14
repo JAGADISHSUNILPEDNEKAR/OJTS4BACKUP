@@ -11,3 +11,4 @@ PyJWT
 cryptography
 ecdsa
 prometheus-fastapi-instrumentator
+python-json-logger
