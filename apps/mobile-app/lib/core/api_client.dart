@@ -25,6 +25,28 @@ class OriginApiClient extends ChangeNotifier {
   String? get accessToken => _accessToken;
   bool get isAuthenticated => _accessToken != null;
 
+  /// Decodes the JWT's `sub` claim, which auth-service populates with the
+  /// user's UUID (services/auth-service/main.py uses subject=str(user.id) on
+  /// create_access_token). Returns null when there's no token or the JWT
+  /// can't be parsed. Does NOT verify the signature — we trust whatever the
+  /// server handed us.
+  String? get currentUserId {
+    final token = _accessToken;
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      var payload = parts[1];
+      // base64 URL with no padding -> add padding back
+      payload = payload.padRight(payload.length + (4 - payload.length % 4) % 4, '=');
+      final decoded = utf8.decode(base64Url.decode(payload));
+      final claims = jsonDecode(decoded) as Map<String, dynamic>;
+      return claims['sub'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Authentication
   ///
   /// Calls POST /api/v1/auth/login. The backend supports an optional TOTP
@@ -92,6 +114,29 @@ class OriginApiClient extends ChangeNotifier {
       return jsonDecode(response.body) as List<dynamic>;
     } else {
       throw Exception('Failed to fetch shipments (${response.statusCode})');
+    }
+  }
+
+  Future<Map<String, dynamic>> createShipment({
+    required String destination,
+    String? farmerId,
+  }) async {
+    final fid = farmerId ?? currentUserId;
+    if (fid == null) {
+      throw Exception('No farmer ID available — log in first or provide one explicitly');
+    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/shipments'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'farmer_id': fid, 'destination': destination}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to create shipment (${response.statusCode}): ${response.body}');
     }
   }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
+import '../../widgets/primary_button.dart';
 
 class SubmitShipmentForm extends StatefulWidget {
   const SubmitShipmentForm({super.key});
@@ -9,127 +11,135 @@ class SubmitShipmentForm extends StatefulWidget {
 }
 
 class _SubmitShipmentFormState extends State<SubmitShipmentForm> {
-  int _currentStep = 0;
-  final _formKey1 = GlobalKey<FormState>();
-  final _formKey2 = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
+  final _destinationController = TextEditingController();
+  final _farmerIdController = TextEditingController();
+  bool _useMyId = true;
+  bool _isLoading = false;
+  String? _errorBanner;
 
-  String? _scannedBarcode;
-  
-  void _scanBarcode() {
+  @override
+  void initState() {
+    super.initState();
+    final myId = OriginApiClient.instance.currentUserId;
+    if (myId == null) {
+      _useMyId = false;
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
     setState(() {
-      _scannedBarcode = 'ITEM-8823901-XYZ';
+      _isLoading = true;
+      _errorBanner = null;
     });
+    try {
+      final result = await OriginApiClient.instance.createShipment(
+        destination: _destinationController.text.trim(),
+        farmerId: _useMyId ? null : _farmerIdController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Shipment ${result['id']?.toString().substring(0, 8) ?? ''} created')),
+      );
+      context.go('/shipments');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorBanner = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _destinationController.dispose();
+    _farmerIdController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final myId = OriginApiClient.instance.currentUserId;
     return Scaffold(
       appBar: AppBar(title: const Text('New Shipment')),
-      body: Stepper(
-        currentStep: _currentStep,
-        onStepContinue: () {
-          if (_currentStep == 0) {
-            if (_formKey1.currentState!.validate()) {
-              setState(() => _currentStep += 1);
-            }
-          } else if (_currentStep == 1) {
-            if (_formKey2.currentState!.validate()) {
-              setState(() => _currentStep += 1);
-            }
-          } else {
-            // Final submit
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Shipment created successfully!')),
-            );
-            context.pop();
-          }
-        },
-        onStepCancel: () {
-          if (_currentStep > 0) {
-            setState(() => _currentStep -= 1);
-          } else {
-            context.pop();
-          }
-        },
-        steps: [
-          Step(
-            title: const Text('Basic Information'),
-            isActive: _currentStep >= 0,
-            content: Form(
-              key: _formKey1,
-              child: Column(
-                children: [
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Destination Warehouse'),
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
-                  ),
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Expected Delivery Date'),
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
-                  ),
-                ],
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Create a shipment', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                'POST /api/v1/shipments only requires a farmer and a '
+                'destination today. Item-level scans, expected dates, and '
+                'escrow setup are separate steps that land in their own '
+                'flows once those endpoints exist.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
-            ),
-          ),
-          Step(
-            title: const Text('Item Scanning'),
-            isActive: _currentStep >= 1,
-            content: Form(
-              key: _formKey2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _scanBarcode,
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Scan Package Barcode'),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_scannedBarcode != null)
-                    ListTile(
-                      leading: const Icon(Icons.check_circle, color: Colors.green),
-                      title: Text(_scannedBarcode!),
-                      subtitle: const Text('Successfully added'),
-                    ),
-                  // Hidden field just for validation logic mock
-                  TextFormField(
-                    readOnly: true,
-                    controller: TextEditingController(text: _scannedBarcode),
-                    decoration: const InputDecoration(border: InputBorder.none),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Must scan at least 1 item' : null,
-                    style: const TextStyle(fontSize: 0, height: 0),
-                  ),
-                ],
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _destinationController,
+                decoration: const InputDecoration(
+                  labelText: 'Destination',
+                  hintText: 'Warehouse / city / address',
+                  prefixIcon: Icon(Icons.place_outlined),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
-            ),
-          ),
-          Step(
-            title: const Text('Confirmation'),
-            isActive: _currentStep >= 2,
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Review shipment details before generating MOCK-PSBT.'),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                value: _useMyId && myId != null,
+                onChanged: myId == null ? null : (v) => setState(() => _useMyId = v),
+                title: const Text('I am the farmer'),
+                subtitle: Text(
+                  myId == null
+                      ? 'Not logged in — enter a farmer UUID below'
+                      : 'Use my user ID (${myId.substring(0, 8)}…)',
+                ),
+              ),
+              if (!_useMyId || myId == null) ...[
                 const SizedBox(height: 16),
-                const Text('Items: 1', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('Barcode: ${_scannedBarcode ?? "None"}'),
+                TextFormField(
+                  controller: _farmerIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'Farmer ID (UUID)',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (v) {
+                    if (_useMyId && myId != null) return null;
+                    return (v == null || v.trim().isEmpty) ? 'Required' : null;
+                  },
+                ),
+              ],
+              const SizedBox(height: 32),
+              PrimaryButton(
+                text: 'Create Shipment',
+                isLoading: _isLoading,
+                onPressed: _submit,
+              ),
+              if (_errorBanner != null) ...[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
-                  color: Colors.orange.shade50,
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
                     children: [
-                      Text('System Mode: MOCK BLOCKCHAIN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
-                      Text('Escrow Amount: 18500.00 USD (0.2073 BTC)'),
-                      Text('Network Fee: Simulated'),
-                    ]
+                      const Icon(Icons.error_outline, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_errorBanner!)),
+                    ],
                   ),
                 ),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
