@@ -192,6 +192,32 @@ class OriginApiClient extends ChangeNotifier {
     }
   }
 
+  // Audits
+  Future<List<dynamic>> fetchAudits() async {
+    final response = await _authGet('audits/');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to fetch audits (${response.statusCode})');
+    }
+  }
+
+  Future<Map<String, dynamic>> requestAudit(String shipmentId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/audits/'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'shipment_id': shipmentId}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to request audit (${response.statusCode}): ${response.body}');
+    }
+  }
+
   // Alerts
   Future<List<dynamic>> fetchAlerts() async {
     final response = await _authGet('alerts');

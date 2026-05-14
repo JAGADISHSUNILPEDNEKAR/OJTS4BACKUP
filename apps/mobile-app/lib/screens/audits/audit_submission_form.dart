@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
+import '../../widgets/primary_button.dart';
 
 class AuditSubmissionForm extends StatefulWidget {
   const AuditSubmissionForm({super.key});
@@ -8,172 +11,142 @@ class AuditSubmissionForm extends StatefulWidget {
 }
 
 class _AuditSubmissionFormState extends State<AuditSubmissionForm> {
-  final _formKey = GlobalKey<FormState>();
-  final _notesController = TextEditingController();
-  final _signatureController = TextEditingController();
-  
-  bool _isCompliant = false;
-  bool _hasWarning = false;
+  final _shipmentIdController = TextEditingController();
+  bool _isLoading = false;
+  String? _resultBanner;
+  bool _resultIsError = false;
 
-  @override
-  void dispose() {
-    _notesController.dispose();
-    _signatureController.dispose();
-    super.dispose();
-  }
-
-  void _submitAudit() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _submit() async {
+    final shipmentId = _shipmentIdController.text.trim();
+    if (shipmentId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Audit report submitted successfully')),
+        const SnackBar(content: Text('Enter a shipment ID')),
       );
-      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _resultBanner = null;
+    });
+    try {
+      final res = await OriginApiClient.instance.requestAudit(shipmentId);
+      if (!mounted) return;
+      setState(() {
+        _resultBanner = 'Audit ${res['auditId']} requested for ${res['shipmentId']}.';
+        _resultIsError = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _resultBanner = e.toString();
+        _resultIsError = true;
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+  void dispose() {
+    _shipmentIdController.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Submit Audit Report'),
-        backgroundColor: colorScheme.surface,
+        title: const Text('Request Audit'),
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Audit Findings',
-                style: textTheme.titleLarge,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Open a new audit', style: textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              'Logs an audit.request.created event against this shipment. '
+              'Auditors and government users see it in their audit list.',
+              style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _shipmentIdController,
+              decoration: const InputDecoration(
+                labelText: 'Shipment ID (UUID)',
+                prefixIcon: Icon(Icons.local_shipping_outlined),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Please provide detailed observations from your inspection.',
-                style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
-              ),
-              const SizedBox(height: 24),
-              
-              // Compliance switches
-              Card(
-                color: colorScheme.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        title: const Text('Meets Quality Standards'),
-                        subtitle: const Text('Product meets all specified quality requirements.'),
-                        value: _isCompliant,
-                        onChanged: (val) {
-                          setState(() {
-                            _isCompliant = val;
-                          });
-                        },
-                        activeColor: colorScheme.secondary,
-                      ),
-                      const Divider(height: 1, indent: 16, endIndent: 16),
-                      SwitchListTile(
-                        title: const Text('Requires Warning / Follow-up'),
-                        subtitle: const Text('Minor issues found that require attention.'),
-                        value: _hasWarning,
-                        onChanged: (val) {
-                          setState(() {
-                            _hasWarning = val;
-                          });
-                        },
-                        activeColor: Colors.orangeAccent,
-                      ),
-                    ],
-                  ),
+            ),
+            const SizedBox(height: 24),
+            PrimaryButton(
+              text: 'Request Audit',
+              isLoading: _isLoading,
+              onPressed: _submit,
+            ),
+            if (_resultBanner != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (_resultIsError ? Colors.red : Colors.green)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              // Image Upload Placeholder
-              Text(
-                'Evidence (Photos/Documents)',
-                style: textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: () {
-                  // Simulate image upload
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colorScheme.primary.withOpacity(0.5),
-                      width: 1.5,
-                      style: BorderStyle.solid,
+                child: Row(
+                  children: [
+                    Icon(
+                      _resultIsError ? Icons.error_outline : Icons.check_circle_outline,
+                      color: _resultIsError ? Colors.red : Colors.green,
                     ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_upload_outlined, size: 40, color: colorScheme.primary),
-                      const SizedBox(height: 8),
-                      Text('Tap to upload photos', style: textTheme.bodyMedium),
-                    ],
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_resultBanner!)),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Detailed Notes
-              TextFormField(
-                controller: _notesController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Detailed Notes',
-                  hintText: 'Enter specific observations or issues found...',
-                  alignLabelWithHint: true,
+              if (!_resultIsError) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () => context.go('/fraud-review'),
+                  icon: const Icon(Icons.list_alt),
+                  label: const Text('View all audits'),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter detailed notes.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Digital Signature Signature
-              TextFormField(
-                controller: _signatureController,
-                decoration: const InputDecoration(
-                  labelText: 'Digital Signature (Type Full Name)',
-                  prefixIcon: Icon(Icons.edit_document),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Signature is required.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 40),
-
-              // Submit Button
-              ElevatedButton(
-                onPressed: _submitAudit,
-                child: const Text('Submit Final Report'),
-              ),
-              const SizedBox(height: 32),
+              ],
             ],
-          ),
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 18, color: Colors.white54),
+                        SizedBox(width: 8),
+                        Text(
+                          'Audit findings & evidence',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'audit-reporting-service only accepts {shipment_id} '
+                      'today. Compliance flags, photo evidence, and a typed '
+                      'digital signature need new endpoints before the form '
+                      'can collect and submit them — those fields were '
+                      'removed to avoid suggesting they are recorded.',
+                      style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
