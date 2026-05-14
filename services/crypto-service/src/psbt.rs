@@ -14,6 +14,11 @@ pub struct PsbtService {
     escrow_agent_key: SecretKey,
     rpc_client: Option<std::sync::Arc<bitcoincore_rpc::Client>>,
     last_anchor_txid: std::sync::Arc<std::sync::RwLock<Option<Txid>>>,
+    // When true, missing RPC = hard error rather than mock UTXO. main.rs
+    // wires this from REQUIRE_BITCOIN_RPC (defaults to true in production).
+    // Tests construct PsbtService with require_bitcoin_rpc=false so the
+    // existing mock path stays available without an RPC node.
+    require_bitcoin_rpc: bool,
 }
 
 impl PsbtService {
@@ -21,11 +26,13 @@ impl PsbtService {
         escrow_agent_key: SecretKey,
         rpc_client: Option<std::sync::Arc<bitcoincore_rpc::Client>>,
         last_anchor_txid: std::sync::Arc<std::sync::RwLock<Option<Txid>>>,
+        require_bitcoin_rpc: bool,
     ) -> Self {
         Self {
             escrow_agent_key,
             rpc_client,
             last_anchor_txid,
+            require_bitcoin_rpc,
         }
     }
 
@@ -53,8 +60,16 @@ impl PsbtService {
             } else {
                 Err("No unspent UTXOs found in the Bitcoin node wallet. Cannot create PSBT without funds.".to_string())
             }
+        } else if self.require_bitcoin_rpc {
+            // Fail-closed: in production a PSBT built on Txid::all_zeros()
+            // would broadcast a transaction spending a non-existent input,
+            // bricking the escrow flow. Refuse to construct one.
+            Err(
+                "Bitcoin RPC client is not configured and REQUIRE_BITCOIN_RPC=true; \
+                 refusing to build a PSBT against a mock UTXO."
+                    .to_string(),
+            )
         } else {
-            // Mock UTXO for tests if RPC is missing
             log::warn!(
                 "Using mock UTXO (all_zeros) for PSBT - only appropriate for testing environments."
             );
@@ -170,6 +185,12 @@ impl PsbtService {
                     Err(format!("Bitcoin RPC error: {}", e))
                 }
             }
+        } else if self.require_bitcoin_rpc {
+            Err(
+                "Bitcoin RPC client is not configured and REQUIRE_BITCOIN_RPC=true; \
+                 refusing to return a mocked txid for finalize_and_broadcast."
+                    .to_string(),
+            )
         } else {
             log::info!("No RPC client. Finalizing PSBT and returning TXID (mocked)...");
             Ok(psbt.unsigned_tx.txid().to_string())
@@ -185,7 +206,9 @@ mod tests {
     fn test_psbt_flow() {
         let dummy_key = bitcoin::secp256k1::SecretKey::from_slice(&[4u8; 32]).unwrap();
         let last_anchor = std::sync::Arc::new(std::sync::RwLock::new(None));
-        let service = PsbtService::new(dummy_key, None, last_anchor);
+        // require_bitcoin_rpc=false so the mock UTXO/broadcast paths stay
+        // available for offline unit tests.
+        let service = PsbtService::new(dummy_key, None, last_anchor, false);
         let psbt_b64 = service
             .create_multisig_psbt("shipment_123", "mock_buyer", "mock_seller", 1000)
             .expect("Should create PSBT");

@@ -199,6 +199,11 @@ services:
       - BITCOIN_RPC_URL=http://production.bitcoincore.internal:8332
       - BITCOIN_RPC_USER=admin_mainnet
       - BITCOIN_RPC_PASS=secure_mainnet_rpc_password
+      # Local dev: there is no bitcoind or Vault in compose, so allow startup
+      # with the mock anchoring service and hardcoded Escrow Agent key.
+      # Production must NOT set these — the defaults (true) fail-closed.
+      - REQUIRE_BITCOIN_RPC=false
+      - REQUIRE_VAULT_SYSTEM_KEYS=false
 
 volumes:
   pgdata:

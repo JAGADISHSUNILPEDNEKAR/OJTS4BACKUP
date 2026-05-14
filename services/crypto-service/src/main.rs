@@ -20,54 +20,40 @@ use serde_json::Value;
 use bitcoin::secp256k1::SecretKey;
 use vault::VaultClient;
 
+/// Fail-closed knob, mirroring the Python services' REQUIRE_VAULT_KEYS /
+/// REQUIRE_INTERNAL_API_KEY pattern. Defaults to true in production so the
+/// service refuses to start with a mock Bitcoin RPC client or mock escrow
+/// key. Set to "false" locally (docker-compose) where a real Vault and
+/// bitcoind aren't available.
+fn env_bool(name: &str, default: bool) -> bool {
+    match env::var(name) {
+        Ok(v) => matches!(v.as_str(), "true" | "1" | "TRUE" | "True"),
+        Err(_) => default,
+    }
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    println!("Origin Crypto Service Starting...");
-    println!("Initializing Vault, Merkle Builder and Bitcoin Anchoring worker...");
+    log::info!("Origin Crypto Service Starting...");
+    log::info!("Initializing Vault, Merkle Builder and Bitcoin Anchoring worker...");
 
-    let mut escrow_agent_key = SecretKey::from_slice(&[3u8; 32]).unwrap();
-    if let Some(vault_client) = VaultClient::new() {
-        match vault_client.get_system_keys().await {
-            Ok(hex_key) => {
-                if let Ok(bytes) = hex::decode(&hex_key) {
-                    if let Ok(sk) = SecretKey::from_slice(&bytes) {
-                        log::info!("Successfully loaded Escrow Agent key from Vault");
-                        escrow_agent_key = sk;
-                    } else {
-                        log::error!("Vault key is invalid secp256k1 scalar");
-                    }
-                } else {
-                    log::error!("Vault key is not valid hex");
-                }
-            }
-            Err(e) => log::error!("Failed to fetch key from Vault: {}", e),
-        }
-    } else {
-        log::warn!("Proceeding with mock Escrow Agent key.");
-    }
+    let require_vault_keys = env_bool("REQUIRE_VAULT_SYSTEM_KEYS", true);
+    let require_bitcoin_rpc = env_bool("REQUIRE_BITCOIN_RPC", true);
+
+    // Vault-backed Escrow Agent key — fail-closed when REQUIRE_VAULT_SYSTEM_KEYS
+    // is true and we can't load a real key. Signing 2-of-3 multisig PSBTs with
+    // a deterministic [3u8; 32] is equivalent to publishing one of the three
+    // escrow signing keys in the repo.
+    let escrow_agent_key = load_escrow_agent_key(require_vault_keys).await;
 
     let rpc_url =
         env::var("BITCOIN_RPC_URL").unwrap_or_else(|_| "http://localhost:18332".to_string());
     let rpc_user = env::var("BITCOIN_RPC_USER").unwrap_or_else(|_| "admin".to_string());
     let rpc_pass = env::var("BITCOIN_RPC_PASS").unwrap_or_else(|_| "admin".to_string());
 
-    let mut rpc_client_for_psbt = None;
-    let anchoring_service: Arc<dyn AnchoringService + Send + Sync> =
-        if let Ok(rpc) = Client::new(&rpc_url, Auth::UserPass(rpc_user, rpc_pass)) {
-            if let Ok(info) = rpc.get_blockchain_info() {
-                println!("Connected to Bitcoin testnet node: {}", info.chain);
-                let rpc_arc = Arc::new(rpc);
-                rpc_client_for_psbt = Some(rpc_arc.clone());
-                Arc::new(anchoring::BitcoinClienWrapper::new(rpc_arc))
-            } else {
-                println!("Failed to connect to Bitcoin RPC. Using mock service.");
-                Arc::new(MockAnchoringService)
-            }
-        } else {
-            println!("Bitcoin RPC client error. Using mock service.");
-            Arc::new(MockAnchoringService)
-        };
+    let (anchoring_service, rpc_client_for_psbt) =
+        build_anchoring(&rpc_url, rpc_user, rpc_pass, require_bitcoin_rpc);
 
     let kafka_brokers = env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
     let kafka_publisher = Arc::new(kafka::KafkaPublisher::new(&kafka_brokers));
@@ -226,6 +212,7 @@ async fn main() {
                     escrow_agent_key,
                     rpc_client_for_psbt,
                     last_anchor_txid_for_psbt,
+                    require_bitcoin_rpc,
                 );
 
                 loop {
@@ -300,8 +287,93 @@ async fn main() {
         }
     });
 
-    println!("Crypto service is running...");
+    log::info!("Crypto service is running...");
     // Keep main thread alive
     tokio::signal::ctrl_c().await.unwrap();
-    println!("Shutting down...");
+    log::info!("Shutting down...");
+}
+
+async fn load_escrow_agent_key(require_vault_keys: bool) -> SecretKey {
+    let vault_client = match VaultClient::new() {
+        Some(c) => c,
+        None => {
+            if require_vault_keys {
+                panic!(
+                    "REQUIRE_VAULT_SYSTEM_KEYS=true but Vault client could not be \
+                     initialized (VAULT_ADDR / VAULT_TOKEN unset). Refusing to start \
+                     with a hardcoded mock Escrow Agent key."
+                );
+            }
+            log::warn!("Vault disabled — using hardcoded mock Escrow Agent key (DEV ONLY).");
+            return SecretKey::from_slice(&[3u8; 32]).unwrap();
+        }
+    };
+
+    match vault_client.get_system_keys().await {
+        Ok(hex_key) => {
+            let bytes = hex::decode(&hex_key)
+                .unwrap_or_else(|e| panic!("Vault key is not valid hex: {}", e));
+            SecretKey::from_slice(&bytes)
+                .unwrap_or_else(|e| panic!("Vault key is invalid secp256k1 scalar: {}", e))
+        }
+        Err(e) => {
+            if require_vault_keys {
+                panic!(
+                    "REQUIRE_VAULT_SYSTEM_KEYS=true and Vault returned an error: {}. \
+                     Refusing to start with a hardcoded mock Escrow Agent key.",
+                    e
+                );
+            }
+            log::warn!("Failed to fetch key from Vault ({e}). Using hardcoded mock key.");
+            SecretKey::from_slice(&[3u8; 32]).unwrap()
+        }
+    }
+}
+
+fn build_anchoring(
+    rpc_url: &str,
+    rpc_user: String,
+    rpc_pass: String,
+    require_bitcoin_rpc: bool,
+) -> (
+    Arc<dyn AnchoringService + Send + Sync>,
+    Option<Arc<bitcoincore_rpc::Client>>,
+) {
+    match Client::new(rpc_url, Auth::UserPass(rpc_user, rpc_pass)) {
+        Ok(rpc) => match rpc.get_blockchain_info() {
+            Ok(info) => {
+                log::info!("Connected to Bitcoin node: {}", info.chain);
+                let rpc_arc = Arc::new(rpc);
+                let svc: Arc<dyn AnchoringService + Send + Sync> =
+                    Arc::new(anchoring::BitcoinClienWrapper::new(rpc_arc.clone()));
+                (svc, Some(rpc_arc))
+            }
+            Err(e) => bail_or_mock(
+                require_bitcoin_rpc,
+                &format!("get_blockchain_info failed: {}", e),
+            ),
+        },
+        Err(e) => bail_or_mock(
+            require_bitcoin_rpc,
+            &format!("Bitcoin RPC client init failed: {}", e),
+        ),
+    }
+}
+
+fn bail_or_mock(
+    require_bitcoin_rpc: bool,
+    reason: &str,
+) -> (
+    Arc<dyn AnchoringService + Send + Sync>,
+    Option<Arc<bitcoincore_rpc::Client>>,
+) {
+    if require_bitcoin_rpc {
+        panic!(
+            "REQUIRE_BITCOIN_RPC=true but Bitcoin RPC is unreachable ({reason}). \
+             Refusing to start with a mock anchoring service — it would broadcast \
+             fake txids for every Merkle commitment."
+        );
+    }
+    log::warn!("Bitcoin RPC unreachable ({reason}). Using MockAnchoringService (DEV ONLY).");
+    (Arc::new(MockAnchoringService), None)
 }
