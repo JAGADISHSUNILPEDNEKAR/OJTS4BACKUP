@@ -237,6 +237,60 @@ class OriginApiClient extends ChangeNotifier {
     }
   }
 
+  // Users
+  Future<Map<String, dynamic>> fetchMyProfile() async {
+    final response = await _authGet('users/me');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch profile (${response.statusCode})');
+    }
+  }
+
+  /// PUT /api/v1/users/me. Pass any subset of {email, displayName, isActive,
+  /// preferences}. The server rejects self role-changes (403).
+  Future<Map<String, dynamic>> updateMyProfile({
+    String? email,
+    String? displayName,
+    bool? isActive,
+    Map<String, dynamic>? preferences,
+  }) async {
+    final body = <String, dynamic>{};
+    if (email != null) body['email'] = email;
+    if (displayName != null) body['display_name'] = displayName;
+    if (isActive != null) body['is_active'] = isActive;
+    if (preferences != null) body['preferences'] = preferences;
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/me'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to update profile (${response.statusCode}): ${response.body}');
+    }
+  }
+
+  Future<void> logoutBackend() async {
+    final token = _accessToken;
+    _accessToken = null;
+    notifyListeners();
+    if (token == null) return;
+    // Fire-and-forget the backend revoke — even if the network fails the
+    // local token is already cleared.
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/auth/logout'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+    } catch (_) {/* best effort */}
+  }
+
   // Audits
   Future<List<dynamic>> fetchAudits() async {
     final response = await _authGet('audits/');
