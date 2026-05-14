@@ -43,14 +43,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # Test dependencies. Some services have requirements.dev.txt
-          # (escrow-service does); others don't. itsdangerous is required
-          # by starlette.middleware.sessions, which auth-service imports
-          # but doesn't declare directly.
-          if [ -f requirements.dev.txt ]; then
-            pip install -r requirements.dev.txt
+          # Every service ships requirements.dev.txt for test deps. If a
+          # service is missing this file, surface it loudly instead of
+          # silently papering over with ad-hoc installs here.
+          if [ ! -f requirements.dev.txt ]; then
+            echo "::error::services/${{ matrix.service }}/requirements.dev.txt is missing"
+            exit 1
           fi
-          pip install pytest pytest-asyncio httpx itsdangerous
+          pip install -r requirements.dev.txt
 
       - name: Run pytest
         working-directory: services/${{ matrix.service }}

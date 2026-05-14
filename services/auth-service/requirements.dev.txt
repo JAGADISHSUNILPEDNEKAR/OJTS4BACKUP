@@ -1,0 +1,7 @@
+pytest
+pytest-asyncio
+httpx
+# starlette.middleware.sessions (used by main.py for OAuth state) requires
+# itsdangerous, but main.py imports it transitively rather than directly,
+# so requirements.txt doesn't declare it.
+itsdangerous
