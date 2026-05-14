@@ -80,31 +80,51 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Resolve repo/dir names
+        id: names
+        run: |
+          DIR_NAME=${{ matrix.service }}
+          # The directory names have underscores in some places, but the
+          # service / ECR repo names use hyphens. Map both ways here.
+          case "$DIR_NAME" in
+            ml_service)              REPO_NAME="ml-service" ;;
+            alert_service)           REPO_NAME="alert-service" ;;
+            audit_reporting_service) REPO_NAME="audit-reporting-service" ;;
+            *)                       REPO_NAME="$DIR_NAME" ;;
+          esac
+          echo "dir_name=$DIR_NAME" >> "$GITHUB_OUTPUT"
+          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build image locally
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: origin-staging-${{ matrix.service }}
           IMAGE_TAG: ${{ github.sha }}
+          DIR_NAME: ${{ steps.names.outputs.dir_name }}
+          REPO_NAME: ${{ steps.names.outputs.repo_name }}
         run: |
-          # The directory names have underscores in some places, but the service / ECR name has hyphens
-          DIR_NAME=${{ matrix.service }}
-          
-          # Handle directory naming mismatches
-          if [ "$DIR_NAME" == "ml_service" ]; then
-            REPO_NAME="ml-service"
-          elif [ "$DIR_NAME" == "alert_service" ]; then
-            REPO_NAME="alert-service"
-          elif [ "$DIR_NAME" == "audit_reporting_service" ]; then
-            REPO_NAME="audit-reporting-service"
-          else
-            REPO_NAME=$DIR_NAME
-          fi
-          
           echo "Building $DIR_NAME for repo origin-staging-$REPO_NAME"
-          
-          docker build -t $ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG ./services/$DIR_NAME
-          docker push $ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG
-          
-          # Also tag as latest
-          docker tag $ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG $ECR_REGISTRY/origin-staging-$REPO_NAME:latest
-          docker push $ECR_REGISTRY/origin-staging-$REPO_NAME:latest
+          docker build -t "$ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG" "./services/$DIR_NAME"
+
+      - name: Scan image with Trivy (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          # Scan the locally-built image before it touches the registry.
+          # Anything HIGH or CRITICAL with a known fix fails the deploy —
+          # ignore-unfixed: true means we don't block on CVEs upstream
+          # hasn't shipped a patch for yet.
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/origin-staging-${{ steps.names.outputs.repo_name }}:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+          REPO_NAME: ${{ steps.names.outputs.repo_name }}
+        run: |
+          docker push "$ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG"
+          docker tag "$ECR_REGISTRY/origin-staging-$REPO_NAME:$IMAGE_TAG" "$ECR_REGISTRY/origin-staging-$REPO_NAME:latest"
+          docker push "$ECR_REGISTRY/origin-staging-$REPO_NAME:latest"
