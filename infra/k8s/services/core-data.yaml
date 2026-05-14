@@ -14,6 +14,10 @@ spec:
     metadata:
       labels:
         app: shipment-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
     spec:
       containers:
       - name: shipment-service
@@ -21,6 +25,14 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        readinessProbe:
+          httpGet: { path: /health, port: 8000 }
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: { path: /health, port: 8000 }
+          initialDelaySeconds: 15
+          periodSeconds: 20
         envFrom:
         - configMapRef:
             name: origin-shared-config
@@ -60,6 +72,10 @@ spec:
     metadata:
       labels:
         app: iot-ingestion-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
     spec:
       containers:
       - name: iot-ingestion-service
@@ -67,6 +83,14 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        readinessProbe:
+          httpGet: { path: /health, port: 8000 }
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: { path: /health, port: 8000 }
+          initialDelaySeconds: 15
+          periodSeconds: 20
         envFrom:
         - configMapRef:
             name: origin-shared-config
