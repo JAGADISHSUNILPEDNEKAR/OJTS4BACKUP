@@ -1,10 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 import '../../widgets/primary_button.dart';
-import '../../widgets/otp_input.dart';
 
-class TwoFactorVerificationScreen extends StatelessWidget {
-  const TwoFactorVerificationScreen({super.key});
+class TwoFactorVerificationScreen extends StatefulWidget {
+  final String email;
+  final String password;
+
+  const TwoFactorVerificationScreen({
+    super.key,
+    required this.email,
+    required this.password,
+  });
+
+  @override
+  State<TwoFactorVerificationScreen> createState() => _TwoFactorVerificationScreenState();
+}
+
+class _TwoFactorVerificationScreenState extends State<TwoFactorVerificationScreen> {
+  final _codeController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _submit() async {
+    final code = _codeController.text.trim();
+    if (code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the 6-digit code')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await OriginApiClient.instance.login(
+        widget.email,
+        widget.password,
+        totpCode: code,
+      );
+      if (!mounted) return;
+      context.go('/origin-dashboard');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,51 +76,66 @@ class TwoFactorVerificationScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.lock_clock, color: Theme.of(context).colorScheme.primary, size: 40),
+                child: Icon(
+                  Icons.lock_clock,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 32),
-              Text('Two-Factor Authentication', style: Theme.of(context).textTheme.displaySmall),
+              Text(
+                'Two-Factor Authentication',
+                style: Theme.of(context).textTheme.displaySmall,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 12),
               Text(
-                "We've sent a 6-digit verification code to your device ending in ...8832",
+                'Enter the 6-digit code from your authenticator app.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
-              const OtpInput(),
+              TextField(
+                controller: _codeController,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6),
+                ],
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 28,
+                  letterSpacing: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  hintText: '------',
+                  counterText: '',
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
               const SizedBox(height: 48),
               PrimaryButton(
                 text: 'Confirm Identity',
-                onPressed: () {
-                  context.push('/setup-2fa'); // Mock navigation to setup or dashboard
-                },
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("Didn't receive the code? ", style: Theme.of(context).textTheme.bodyMedium),
-                  Text(
-                    "Resend in 00:24",
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                ],
+                isLoading: _isLoading,
+                onPressed: _submit,
               ),
               const Spacer(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                   const Icon(Icons.verified_user, color: Colors.white54, size: 16),
-                   const SizedBox(width: 8),
-                   Text("Protected by AgriGuard - Secure Encryption", style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54)),
+                  const Icon(Icons.verified_user, color: Colors.white54, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Protected by AgriGuard',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
         ),

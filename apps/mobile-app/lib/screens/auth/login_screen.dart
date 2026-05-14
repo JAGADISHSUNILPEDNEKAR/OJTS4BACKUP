@@ -30,7 +30,10 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await OriginApiClient.instance.login(email, password);
       if (!mounted) return;
-      context.push('/verify-2fa');
+      context.go('/origin-dashboard');
+    } on TotpRequiredException {
+      if (!mounted) return;
+      context.push('/verify-2fa', extra: {'email': email, 'password': password});
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

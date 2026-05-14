@@ -2,6 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+/// Thrown by [OriginApiClient.login] when the backend reports the user has
+/// TOTP enabled and the request was missing a `totp_code`. Callers should
+/// catch this and route to the 2FA screen to collect the 6-digit code.
+class TotpRequiredException implements Exception {
+  @override
+  String toString() => 'TotpRequiredException';
+}
+
 /// API Client for the Origin Mobile Application.
 /// Singleton with ChangeNotifier-based auth state.
 /// Access via `OriginApiClient.instance`.
@@ -18,11 +26,25 @@ class OriginApiClient extends ChangeNotifier {
   bool get isAuthenticated => _accessToken != null;
 
   // Authentication
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  ///
+  /// Calls POST /api/v1/auth/login. The backend supports an optional TOTP
+  /// challenge: if the user has totp_secret set, the first attempt without
+  /// [totpCode] returns 401 with detail "TOTP code required". The caller
+  /// should catch [TotpRequiredException] and prompt for a 6-digit code,
+  /// then call login() again with [totpCode] populated.
+  Future<Map<String, dynamic>> login(
+    String email,
+    String password, {
+    String? totpCode,
+  }) async {
+    final body = <String, dynamic>{'email': email, 'password': password};
+    if (totpCode != null && totpCode.isNotEmpty) {
+      body['totp_code'] = totpCode;
+    }
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
@@ -30,9 +52,21 @@ class OriginApiClient extends ChangeNotifier {
       _accessToken = data['access_token'] as String?;
       notifyListeners();
       return data;
-    } else {
-      throw Exception('Login failed (${response.statusCode}): ${response.body}');
     }
+
+    // Try to extract the backend's structured error detail.
+    String detail = response.body;
+    try {
+      final parsed = jsonDecode(response.body);
+      if (parsed is Map && parsed['detail'] is String) {
+        detail = parsed['detail'] as String;
+      }
+    } catch (_) {/* keep raw body */}
+
+    if (response.statusCode == 401 && detail.contains('TOTP code required')) {
+      throw TotpRequiredException();
+    }
+    throw Exception('Login failed (${response.statusCode}): $detail');
   }
 
   void logout() {

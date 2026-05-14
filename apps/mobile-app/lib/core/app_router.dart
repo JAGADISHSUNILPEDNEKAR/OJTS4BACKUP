@@ -74,7 +74,13 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/verify-2fa',
-      builder: (context, state) => const TwoFactorVerificationScreen(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? const {};
+        return TwoFactorVerificationScreen(
+          email: extra['email'] as String? ?? '',
+          password: extra['password'] as String? ?? '',
+        );
+      },
     ),
     GoRoute(
       path: '/setup-2fa',
