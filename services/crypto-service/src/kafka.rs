@@ -1,7 +1,7 @@
-use serde::Serialize;
-use std::time::Duration;
 use rdkafka::producer::{FutureProducer, FutureRecord};
 use rdkafka::util::Timeout;
+use serde::Serialize;
+use std::time::Duration;
 
 pub struct KafkaPublisher {
     producer: Option<FutureProducer>, // Use Option to allow mock
@@ -13,11 +13,14 @@ impl KafkaPublisher {
             .set("bootstrap.servers", brokers)
             .set("message.timeout.ms", "5000")
             .create();
-            
+
         match producer {
             Ok(p) => Self { producer: Some(p) },
             Err(e) => {
-                log::warn!("Could not create real Kafka producer: {}. Mocking publisher.", e);
+                log::warn!(
+                    "Could not create real Kafka producer: {}. Mocking publisher.",
+                    e
+                );
                 Self { producer: None }
             }
         }
@@ -28,11 +31,11 @@ impl KafkaPublisher {
         log::info!("Publishing to {} [key: {}]: {}", topic, key, json_payload);
 
         if let Some(producer) = &self.producer {
-            let record = FutureRecord::to(topic)
-                .payload(&json_payload)
-                .key(key);
-                
-            let _ = producer.send(record, Timeout::After(Duration::from_secs(2))).await;
+            let record = FutureRecord::to(topic).payload(&json_payload).key(key);
+
+            let _ = producer
+                .send(record, Timeout::After(Duration::from_secs(2)))
+                .await;
         }
     }
 }

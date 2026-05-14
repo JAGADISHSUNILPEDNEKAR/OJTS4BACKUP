@@ -95,6 +95,53 @@ jobs:
         # pattern (E402) doesn't trip CI.
         run: ruff check --select F,E9 services/
 
+  rust-checks:
+    name: "rust: crypto-service fmt + clippy + test"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/crypto-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry & target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            services/crypto-service/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/crypto-service/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # rdkafka needs a C build chain + libsasl + cmake to compile the
+      # bundled librdkafka. Skip if you switch rdkafka to a dynamic feature
+      # later, but for now compile-time deps must be present.
+      - name: Install C build deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake pkg-config libssl-dev libsasl2-dev zlib1g-dev
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        # -D warnings turns every clippy lint into a hard fail. Start with
+        # warnings-as-warnings and tighten in a follow-up once the existing
+        # findings are cleared.
+        run: cargo clippy --all-targets --all-features
+
+      - name: cargo test
+        run: cargo test --all-features
+
   web-checks:
     name: "web-app: eslint + tsc"
     runs-on: ubuntu-latest

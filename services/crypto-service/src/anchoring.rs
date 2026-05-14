@@ -1,7 +1,7 @@
-use bitcoincore_rpc::{Client, RpcApi};
-use bitcoin::{Transaction, TxOut};
 use bitcoin::blockdata::script::Builder;
 use bitcoin::opcodes::all::*;
+use bitcoin::{Transaction, TxOut};
+use bitcoincore_rpc::{Client, RpcApi};
 
 pub trait AnchoringService {
     fn anchor_root(&self, root: &[u8]) -> Result<String, String>;
@@ -42,11 +42,15 @@ impl AnchoringService for BitcoinClienWrapper {
         };
 
         // Fund the transaction (adds UTXOs and change output, calculates fee)
-        let funded = self.client.fund_raw_transaction(&tx, None, Some(true))
+        let funded = self
+            .client
+            .fund_raw_transaction(&tx, None, Some(true))
             .map_err(|e| format!("fund_raw_transaction failed: {}", e))?;
 
         // Sign the inputs using the node's wallet
-        let signed = self.client.sign_raw_transaction_with_wallet(&funded.hex, None, None)
+        let signed = self
+            .client
+            .sign_raw_transaction_with_wallet(&funded.hex, None, None)
             .map_err(|e| format!("sign_raw_transaction_with_wallet failed: {}", e))?;
 
         if !signed.complete {
@@ -54,7 +58,9 @@ impl AnchoringService for BitcoinClienWrapper {
         }
 
         // Broadcast to network
-        let broadcasted_txid = self.client.send_raw_transaction(&signed.hex)
+        let broadcasted_txid = self
+            .client
+            .send_raw_transaction(&signed.hex)
             .map_err(|e| format!("send_raw_transaction failed: {}", e))?;
 
         Ok(broadcasted_txid.to_string())
@@ -78,6 +84,9 @@ mod tests {
     fn test_mock_anchoring() {
         let service = MockAnchoringService;
         let result = service.anchor_root(b"dummy_root").unwrap();
-        assert_eq!(result, "5e3d9a1b7f2c4e6a8b0d2f4e6a8b0d2f5e3d9a1b7f2c4e6a8b0d2f4e6a8b0de");
+        assert_eq!(
+            result,
+            "5e3d9a1b7f2c4e6a8b0d2f4e6a8b0d2f5e3d9a1b7f2c4e6a8b0d2f4e6a8b0de"
+        );
     }
 }

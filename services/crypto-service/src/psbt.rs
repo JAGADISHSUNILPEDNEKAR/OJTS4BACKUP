@@ -1,10 +1,10 @@
-use bitcoin::psbt::{Psbt, Input as PsbtInput};
-use bitcoin::{Transaction, TxIn, TxOut, OutPoint, Txid, ScriptBuf, Sequence, Witness};
-use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::PublicKey;
-use bitcoin::opcodes::all::*;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use bitcoin::blockdata::script::Builder;
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+use bitcoin::hashes::Hash;
+use bitcoin::opcodes::all::*;
+use bitcoin::psbt::{Input as PsbtInput, Psbt};
+use bitcoin::secp256k1::PublicKey;
+use bitcoin::{OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness};
 use bitcoincore_rpc::RpcApi;
 
 use bitcoin::secp256k1::SecretKey;
@@ -18,23 +18,31 @@ pub struct PsbtService {
 
 impl PsbtService {
     pub fn new(
-        escrow_agent_key: SecretKey, 
+        escrow_agent_key: SecretKey,
         rpc_client: Option<std::sync::Arc<bitcoincore_rpc::Client>>,
-        last_anchor_txid: std::sync::Arc<std::sync::RwLock<Option<Txid>>>
+        last_anchor_txid: std::sync::Arc<std::sync::RwLock<Option<Txid>>>,
     ) -> Self {
-        Self { escrow_agent_key, rpc_client, last_anchor_txid }
+        Self {
+            escrow_agent_key,
+            rpc_client,
+            last_anchor_txid,
+        }
     }
 
     pub fn fetch_unspent_utxo(&self) -> Result<(Txid, u32, u64), String> {
         if let Some(ref rpc) = self.rpc_client {
-            let unspent = rpc.list_unspent(None, None, None, None, None)
+            let unspent = rpc
+                .list_unspent(None, None, None, None, None)
                 .map_err(|e| format!("Bitcoin RPC listunspent error: {}", e))?;
-            
+
             // Priority 1: Check if our last anchored TX has an unspent output (change)
             let last_anchor = self.last_anchor_txid.read().unwrap().clone();
             if let Some(anchor_txid) = last_anchor {
                 if let Some(utxo) = unspent.iter().find(|u| u.txid == anchor_txid) {
-                    log::info!("Wiring success: Using UTXO from last Merkle anchor {}", anchor_txid);
+                    log::info!(
+                        "Wiring success: Using UTXO from last Merkle anchor {}",
+                        anchor_txid
+                    );
                     return Ok((utxo.txid, utxo.vout, utxo.amount.to_sat()));
                 }
             }
@@ -47,28 +55,48 @@ impl PsbtService {
             }
         } else {
             // Mock UTXO for tests if RPC is missing
-            log::warn!("Using mock UTXO (all_zeros) for PSBT - only appropriate for testing environments.");
+            log::warn!(
+                "Using mock UTXO (all_zeros) for PSBT - only appropriate for testing environments."
+            );
             Ok((Txid::all_zeros(), 0, 100_000))
         }
     }
 
     #[allow(dead_code)]
-    pub fn create_multisig_psbt(&self, shipment_id: &str, buyer_pubkey: &str, seller_pubkey: &str, amount_sat: u64) -> Result<String, String> {
-        log::info!("Creating real 2-of-3 PSBT for shipment {} with amount {} sats", shipment_id, amount_sat);
+    pub fn create_multisig_psbt(
+        &self,
+        shipment_id: &str,
+        buyer_pubkey: &str,
+        seller_pubkey: &str,
+        amount_sat: u64,
+    ) -> Result<String, String> {
+        log::info!(
+            "Creating real 2-of-3 PSBT for shipment {} with amount {} sats",
+            shipment_id,
+            amount_sat
+        );
 
         let secp = bitcoin::secp256k1::Secp256k1::new();
-        
+
         let key1 = if buyer_pubkey.len() == 66 || buyer_pubkey.len() == 130 {
-            PublicKey::from_slice(&hex::decode(buyer_pubkey).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?
+            PublicKey::from_slice(&hex::decode(buyer_pubkey).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?
         } else {
             // Fallback for mock/test data if it's not hex
-            PublicKey::from_secret_key(&secp, &bitcoin::secp256k1::SecretKey::from_slice(&[1u8; 32]).unwrap())
+            PublicKey::from_secret_key(
+                &secp,
+                &bitcoin::secp256k1::SecretKey::from_slice(&[1u8; 32]).unwrap(),
+            )
         };
 
         let key2 = if seller_pubkey.len() == 66 || seller_pubkey.len() == 130 {
-            PublicKey::from_slice(&hex::decode(seller_pubkey).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?
+            PublicKey::from_slice(&hex::decode(seller_pubkey).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?
         } else {
-            PublicKey::from_secret_key(&secp, &bitcoin::secp256k1::SecretKey::from_slice(&[2u8; 32]).unwrap())
+            PublicKey::from_secret_key(
+                &secp,
+                &bitcoin::secp256k1::SecretKey::from_slice(&[2u8; 32]).unwrap(),
+            )
         };
 
         let key3 = PublicKey::from_secret_key(&secp, &self.escrow_agent_key);
@@ -84,7 +112,7 @@ impl PsbtService {
 
         // Complete wiring: Fetch real UTXO, following the Merkle anchor if possible
         let (txid, vout, input_amount) = self.fetch_unspent_utxo()?;
-        
+
         let outpoint = OutPoint { txid, vout };
         let txin = TxIn {
             previous_output: outpoint,
@@ -111,7 +139,9 @@ impl PsbtService {
         psbt_in.witness_script = Some(witness_script);
         psbt_in.witness_utxo = Some(TxOut {
             value: input_amount,
-            script_pubkey: ScriptBuf::new_v0_p2wsh(&psbt_in.witness_script.as_ref().unwrap().wscript_hash()),
+            script_pubkey: ScriptBuf::new_v0_p2wsh(
+                &psbt_in.witness_script.as_ref().unwrap().wscript_hash(),
+            ),
         });
         psbt.inputs[0] = psbt_in;
 
@@ -122,19 +152,19 @@ impl PsbtService {
     pub fn finalize_and_broadcast(&self, psbt_base64: &str) -> Result<String, String> {
         let decoded = STANDARD.decode(psbt_base64).map_err(|e| e.to_string())?;
         let psbt = Psbt::deserialize(&decoded).map_err(|e| e.to_string())?;
-        
+
         if let Some(ref rpc) = self.rpc_client {
             log::info!("Broadcasting PSBT to Bitcoin network via RPC...");
             // In a real flow, the PSBT would be finalized (witnesses added) before broadcasting.
             // For now, we assume it's ready or we extract the transaction.
             let tx = psbt.extract_tx();
             let tx_hex = hex::encode(bitcoin::consensus::serialize(&tx));
-            
+
             match rpc.send_raw_transaction(tx_hex) {
                 Ok(txid) => {
                     log::info!("Successfully broadcasted transaction: {}", txid);
                     Ok(txid.to_string())
-                },
+                }
                 Err(e) => {
                     log::error!("Failed to broadcast transaction: {}", e);
                     Err(format!("Bitcoin RPC error: {}", e))
@@ -156,15 +186,18 @@ mod tests {
         let dummy_key = bitcoin::secp256k1::SecretKey::from_slice(&[4u8; 32]).unwrap();
         let last_anchor = std::sync::Arc::new(std::sync::RwLock::new(None));
         let service = PsbtService::new(dummy_key, None, last_anchor);
-        let psbt_b64 = service.create_multisig_psbt("shipment_123", "mock_buyer", "mock_seller", 1000).expect("Should create PSBT");
-        
-        let txid = service.finalize_and_broadcast(&psbt_b64).expect("Should parse and broadcast");
+        let psbt_b64 = service
+            .create_multisig_psbt("shipment_123", "mock_buyer", "mock_seller", 1000)
+            .expect("Should create PSBT");
+
+        let txid = service
+            .finalize_and_broadcast(&psbt_b64)
+            .expect("Should parse and broadcast");
         assert!(!txid.is_empty());
-        
+
         let decoded = STANDARD.decode(&psbt_b64).expect("Must be base64");
         let parsed = Psbt::deserialize(&decoded).expect("Must be valid PSBT string");
         assert_eq!(parsed.inputs.len(), 1);
         assert!(parsed.inputs[0].witness_script.is_some());
     }
 }
-

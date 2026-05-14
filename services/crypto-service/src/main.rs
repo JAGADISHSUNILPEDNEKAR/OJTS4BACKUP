@@ -17,8 +17,8 @@ use rdkafka::ClientConfig;
 use rdkafka::Message;
 use serde_json::Value;
 
-use vault::VaultClient;
 use bitcoin::secp256k1::SecretKey;
+use vault::VaultClient;
 
 #[tokio::main]
 async fn main() {
@@ -40,40 +40,43 @@ async fn main() {
                 } else {
                     log::error!("Vault key is not valid hex");
                 }
-            },
+            }
             Err(e) => log::error!("Failed to fetch key from Vault: {}", e),
         }
     } else {
         log::warn!("Proceeding with mock Escrow Agent key.");
     }
 
-    let rpc_url = env::var("BITCOIN_RPC_URL").unwrap_or_else(|_| "http://localhost:18332".to_string());
+    let rpc_url =
+        env::var("BITCOIN_RPC_URL").unwrap_or_else(|_| "http://localhost:18332".to_string());
     let rpc_user = env::var("BITCOIN_RPC_USER").unwrap_or_else(|_| "admin".to_string());
     let rpc_pass = env::var("BITCOIN_RPC_PASS").unwrap_or_else(|_| "admin".to_string());
 
     let mut rpc_client_for_psbt = None;
-    let anchoring_service: Arc<dyn AnchoringService + Send + Sync> = if let Ok(rpc) = Client::new(&rpc_url, Auth::UserPass(rpc_user, rpc_pass)) {
-        if let Ok(info) = rpc.get_blockchain_info() {
-            println!("Connected to Bitcoin testnet node: {}", info.chain);
-            let rpc_arc = Arc::new(rpc);
-            rpc_client_for_psbt = Some(rpc_arc.clone());
-            Arc::new(anchoring::BitcoinClienWrapper::new(rpc_arc))
+    let anchoring_service: Arc<dyn AnchoringService + Send + Sync> =
+        if let Ok(rpc) = Client::new(&rpc_url, Auth::UserPass(rpc_user, rpc_pass)) {
+            if let Ok(info) = rpc.get_blockchain_info() {
+                println!("Connected to Bitcoin testnet node: {}", info.chain);
+                let rpc_arc = Arc::new(rpc);
+                rpc_client_for_psbt = Some(rpc_arc.clone());
+                Arc::new(anchoring::BitcoinClienWrapper::new(rpc_arc))
+            } else {
+                println!("Failed to connect to Bitcoin RPC. Using mock service.");
+                Arc::new(MockAnchoringService)
+            }
         } else {
-            println!("Failed to connect to Bitcoin RPC. Using mock service.");
+            println!("Bitcoin RPC client error. Using mock service.");
             Arc::new(MockAnchoringService)
-        }
-    } else {
-        println!("Bitcoin RPC client error. Using mock service.");
-        Arc::new(MockAnchoringService)
-    };
+        };
 
     let kafka_brokers = env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
     let kafka_publisher = Arc::new(kafka::KafkaPublisher::new(&kafka_brokers));
 
-    let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/origin".to_string());
+    let db_url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/origin".to_string());
     let anchoring_service_clone = anchoring_service.clone();
     let kafka_publisher_clone = kafka_publisher.clone();
-    
+
     // Shared state for "wiring" between anchoring and PSBT discovery
     let last_anchor_txid = Arc::new(std::sync::RwLock::new(None));
     let last_anchor_txid_for_job = last_anchor_txid.clone();
@@ -84,21 +87,22 @@ async fn main() {
         loop {
             interval.tick().await;
             log::info!("Running scheduled Merkle tree builder and anchoring job...");
-            
-            let (client, connection) = match tokio_postgres::connect(&db_url, tokio_postgres::NoTls).await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    log::error!("Failed to connect to Postgres: {}", e);
-                    continue;
-                }
-            };
-            
+
+            let (client, connection) =
+                match tokio_postgres::connect(&db_url, tokio_postgres::NoTls).await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::error!("Failed to connect to Postgres: {}", e);
+                        continue;
+                    }
+                };
+
             tokio::spawn(async move {
                 if let Err(e) = connection.await {
                     log::error!("Postgres connection error: {}", e);
                 }
             });
-            
+
             let query = "SELECT id, leaf_hash FROM merkle_leaves WHERE committed = false";
             let rows = match client.query(query, &[]).await {
                 Ok(r) => r,
@@ -107,15 +111,15 @@ async fn main() {
                     continue;
                 }
             };
-            
+
             if rows.is_empty() {
                 log::info!("No uncommitted leaves found. Skipping Merkle Tree build.");
                 continue;
             }
-            
+
             let mut leaves = Vec::new();
             let mut leaf_ids = Vec::new();
-            
+
             for row in &rows {
                 let id: uuid::Uuid = row.get(0);
                 let leaf_hash: String = row.get(1);
@@ -126,41 +130,52 @@ async fn main() {
                     }
                 }
             }
-            
+
             if leaves.is_empty() {
                 log::warn!("Found rows but no valid Hashes could be parsed.");
                 continue;
             }
-            
+
             let tree = merkle::MerkleTree::from_hashes(leaves.clone());
-            
+
             if let Some(root) = tree.root() {
                 let root_bytes = root.to_byte_array();
                 let root_hex = root.to_string();
                 let new_tree_id = uuid::Uuid::new_v4();
-                
+
                 // Insert into merkle_trees
                 let insert_tree = "INSERT INTO merkle_trees (id, root_hash, leaf_count, commitment_timestamp) VALUES ($1, $2, $3, NOW())";
-                if let Err(e) = client.execute(insert_tree, &[&new_tree_id, &root_hex, &(leaves.len() as i32)]).await {
+                if let Err(e) = client
+                    .execute(
+                        insert_tree,
+                        &[&new_tree_id, &root_hex, &(leaves.len() as i32)],
+                    )
+                    .await
+                {
                     log::error!("Failed to insert merkle_tree record: {}", e);
                     continue;
                 }
-                
+
                 // Update merkle_leaves
                 // We're iterating one by one for simplicity in this job, ideally use bulk update or ANY
                 for id in leaf_ids {
-                    let update_leaf = "UPDATE merkle_leaves SET tree_id = $1, committed = true WHERE id = $2";
+                    let update_leaf =
+                        "UPDATE merkle_leaves SET tree_id = $1, committed = true WHERE id = $2";
                     if let Err(e) = client.execute(update_leaf, &[&new_tree_id, &id]).await {
                         log::error!("Failed to update merkle_leaf {}: {}", id, e);
                     }
                 }
-                
-                log::info!("Built and saved Merkle Tree {} with {} leaves", root_hex, leaves.len());
+
+                log::info!(
+                    "Built and saved Merkle Tree {} with {} leaves",
+                    root_hex,
+                    leaves.len()
+                );
 
                 match anchoring_service_clone.anchor_root(&root_bytes) {
                     Ok(txid) => {
                         log::info!("Anchored Merkle root {} with txid {}", root_hex, txid);
-                        
+
                         // Wire it: Update last_anchor_txid so PsbtService can prioritize it
                         if let Ok(parsed_txid) = txid.parse::<bitcoin::Txid>() {
                             let mut last = last_anchor_txid_for_job.write().unwrap();
@@ -172,10 +187,14 @@ async fn main() {
                             "txid": txid,
                             "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
                         });
-                        
-                        kafka_publisher_clone.publish("merkle.committed", &root_hex, &event).await;
-                        kafka_publisher_clone.publish("bitcoin.anchored", &txid, &event).await;
-                    },
+
+                        kafka_publisher_clone
+                            .publish("merkle.committed", &root_hex, &event)
+                            .await;
+                        kafka_publisher_clone
+                            .publish("bitcoin.anchored", &txid, &event)
+                            .await;
+                    }
                     Err(e) => log::error!("Failed to anchor root: {}", e),
                 }
             }
@@ -184,7 +203,7 @@ async fn main() {
 
     let kafka_brokers_clone = kafka_brokers.clone();
     let kafka_publisher_for_psbt = kafka_publisher.clone();
-    
+
     // PSBT Generation Kafka Consumer
     tokio::spawn(async move {
         let consumer: Result<StreamConsumer, _> = ClientConfig::new()
@@ -202,8 +221,12 @@ async fn main() {
                     return;
                 }
                 log::info!("Listening for PSBT requests on escrow.psbt.request...");
-                
-                let psbt_service = psbt::PsbtService::new(escrow_agent_key, rpc_client_for_psbt, last_anchor_txid_for_psbt);
+
+                let psbt_service = psbt::PsbtService::new(
+                    escrow_agent_key,
+                    rpc_client_for_psbt,
+                    last_anchor_txid_for_psbt,
+                );
 
                 loop {
                     match c.recv().await {
@@ -213,25 +236,38 @@ async fn main() {
                                 if let Ok(json_str) = std::str::from_utf8(payload) {
                                     if let Ok(req) = serde_json::from_str::<Value>(json_str) {
                                         if let Some(shipment_id) = req["shipment_id"].as_str() {
-                                            log::info!("Received PSBT request for shipment: {}", shipment_id);
-                                            
+                                            log::info!(
+                                                "Received PSBT request for shipment: {}",
+                                                shipment_id
+                                            );
+
                                             let mut buyer_key = "";
                                             let mut seller_key = "";
-                                            
-                                            if let Some(participants) = req["participants"].as_array() {
+
+                                            if let Some(participants) =
+                                                req["participants"].as_array()
+                                            {
                                                 for p in participants {
                                                     if p["role"] == "buyer" {
-                                                        buyer_key = p["public_key"].as_str().unwrap_or("");
+                                                        buyer_key =
+                                                            p["public_key"].as_str().unwrap_or("");
                                                     } else if p["role"] == "seller" {
-                                                        seller_key = p["public_key"].as_str().unwrap_or("");
+                                                        seller_key =
+                                                            p["public_key"].as_str().unwrap_or("");
                                                     }
                                                 }
                                             }
 
-                                            let amount_btc = req["amount_btc"].as_f64().unwrap_or(0.001);
+                                            let amount_btc =
+                                                req["amount_btc"].as_f64().unwrap_or(0.001);
                                             let amount_sat = (amount_btc * 100_000_000.0) as u64;
 
-                                            match psbt_service.create_multisig_psbt(shipment_id, buyer_key, seller_key, amount_sat) {
+                                            match psbt_service.create_multisig_psbt(
+                                                shipment_id,
+                                                buyer_key,
+                                                seller_key,
+                                                amount_sat,
+                                            ) {
                                                 Ok(generated_psbt) => {
                                                     let response = serde_json::json!({
                                                         "status": "PSBT_GENERATED",
@@ -239,10 +275,18 @@ async fn main() {
                                                         "escrow_id": format!("ESC-{}", shipment_id),
                                                         "psbt": generated_psbt
                                                     });
-                                                    
-                                                    kafka_publisher_for_psbt.publish("escrow.psbt.response", shipment_id, &response).await;
-                                                },
-                                                Err(e) => log::error!("Failed to create PSBT: {}", e),
+
+                                                    kafka_publisher_for_psbt
+                                                        .publish(
+                                                            "escrow.psbt.response",
+                                                            shipment_id,
+                                                            &response,
+                                                        )
+                                                        .await;
+                                                }
+                                                Err(e) => {
+                                                    log::error!("Failed to create PSBT: {}", e)
+                                                }
                                             }
                                         }
                                     }
@@ -251,7 +295,7 @@ async fn main() {
                         }
                     }
                 }
-            },
+            }
             Err(e) => log::error!("Could not create Kafka consumer: {}", e),
         }
     });
