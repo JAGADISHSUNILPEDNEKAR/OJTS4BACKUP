@@ -43,6 +43,7 @@ dependencies:
   google_fonts: ^8.0.2
   flutter_svg: ^2.2.4
   flutter_secure_storage: ^9.2.2
+  mobile_scanner: ^5.2.3
 
 dev_dependencies:
   flutter_test:
