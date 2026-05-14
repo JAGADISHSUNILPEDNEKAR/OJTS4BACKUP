@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/api_client.dart';
+import '../../widgets/primary_button.dart';
 
 class EscrowManagementScreen extends StatefulWidget {
   const EscrowManagementScreen({super.key});
@@ -8,183 +10,164 @@ class EscrowManagementScreen extends StatefulWidget {
 }
 
 class _EscrowManagementScreenState extends State<EscrowManagementScreen> {
-  // Mock data for transactions
-  final List<Map<String, dynamic>> _transactions = [
-    {
-      'id': 'TXN-1029',
-      'amount': '5,000 USDC',
-      'status': 'Completed',
-      'date': 'Oct 24, 2023',
-    },
-    {
-      'id': 'TXN-1030',
-      'amount': '2,500 USDC',
-      'status': 'Pending',
-      'date': 'Oct 25, 2023',
-    },
-  ];
+  final _shipmentIdController = TextEditingController();
+  bool _isFlagging = false;
+  String? _lastResult;
+  bool _lastResultIsError = false;
+
+  Future<void> _flagDispute() async {
+    final shipmentId = _shipmentIdController.text.trim();
+    if (shipmentId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a shipment ID first')),
+      );
+      return;
+    }
+    setState(() {
+      _isFlagging = true;
+      _lastResult = null;
+    });
+    try {
+      final res = await OriginApiClient.instance.flagDispute(shipmentId);
+      if (!mounted) return;
+      setState(() {
+        _lastResult = 'Dispute flagged. Status: ${res['status']}';
+        _lastResultIsError = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _lastResult = e.toString();
+        _lastResultIsError = true;
+      });
+    } finally {
+      if (mounted) setState(() => _isFlagging = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _shipmentIdController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Escrow Management'),
-        backgroundColor: colorScheme.surface,
+        title: const Text('Escrow Actions'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dashboard Balance Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    colorScheme.primary,
-                    colorScheme.primary.withOpacity(0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.primary.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Funds in Escrow',
-                    style: textTheme.titleMedium?.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '12,500.00 USDC',
-                    style: textTheme.displayMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            // Release payment action
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Payment Released successfully')),
-                            );
-                          },
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Release'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: colorScheme.primary,
-                            minimumSize: const Size(0, 48),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            // Raise dispute action
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Dispute Raised')),
-                            );
-                          },
-                          icon: const Icon(Icons.warning_amber_rounded),
-                          label: const Text('Dispute'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white54),
-                            minimumSize: const Size(0, 48),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            
-            // Transaction History
+            Text('Flag a Dispute', style: textTheme.titleLarge),
+            const SizedBox(height: 8),
             Text(
-              'Recent Transactions',
-              style: textTheme.titleLarge,
+              'Mark a shipment as disputed. The backend will halt the escrow '
+              'release pending review.',
+              style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
             ),
             const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _transactions.length,
-              itemBuilder: (context, index) {
-                final txn = _transactions[index];
-                final isCompleted = txn['status'] == 'Completed';
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: colorScheme.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: CircleAvatar(
-                      backgroundColor: isCompleted 
-                          ? colorScheme.secondary.withOpacity(0.2)
-                          : colorScheme.primary.withOpacity(0.2),
-                      child: Icon(
-                        isCompleted ? Icons.check : Icons.hourglass_empty,
-                        color: isCompleted ? colorScheme.secondary : colorScheme.primary,
-                      ),
+            TextField(
+              controller: _shipmentIdController,
+              decoration: const InputDecoration(
+                labelText: 'Shipment ID',
+                hintText: 'UUID',
+                prefixIcon: Icon(Icons.local_shipping_outlined),
+              ),
+            ),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              text: 'Flag Dispute',
+              isLoading: _isFlagging,
+              onPressed: _flagDispute,
+            ),
+            if (_lastResult != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (_lastResultIsError ? Colors.red : Colors.green)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _lastResultIsError ? Icons.error_outline : Icons.check_circle_outline,
+                      color: _lastResultIsError ? Colors.red : Colors.green,
                     ),
-                    title: Text(
-                      txn['id'],
-                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      txn['date'],
-                      style: textTheme.bodyMedium,
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_lastResult!)),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text('Other Actions', style: textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
                       children: [
+                        Icon(Icons.info_outline, size: 18, color: Colors.white54),
+                        SizedBox(width: 8),
                         Text(
-                          txn['amount'],
-                          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          txn['status'],
-                          style: textTheme.bodySmall?.copyWith(
-                            color: isCompleted ? colorScheme.secondary : colorScheme.primary,
-                          ),
+                          'PSBT multisig flow',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
-                    onTap: () {
-                      // Detail view if needed
-                    },
-                  ),
-                );
-              },
+                    const SizedBox(height: 8),
+                    Text(
+                      'Triggering / signing a PSBT (Partially Signed Bitcoin '
+                      'Transaction) is a multi-party flow that requires '
+                      'buyer/seller keys and per-shipment context. The mobile '
+                      'app does not surface that flow yet — it lives in the '
+                      'web operator dashboard.',
+                      style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.account_balance_outlined, size: 18, color: Colors.white54),
+                        SizedBox(width: 8),
+                        Text(
+                          'Balance & history',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'escrow-service does not yet expose a list endpoint, '
+                      'so per-user balance and transaction history are not '
+                      'displayed here. They will appear once the backend '
+                      'adds GET /api/v1/escrow.',
+                      style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

@@ -113,13 +113,53 @@ class OriginApiClient extends ChangeNotifier {
     }
   }
 
-  // Escrows
-  Future<List<dynamic>> fetchEscrows() async {
-    final response = await _authGet('escrows');
+  // Escrow actions. The escrow-service exposes no list/status endpoint
+  // today, so there is no fetchEscrows() — only the action methods below.
+
+  Future<Map<String, dynamic>> flagDispute(String shipmentId) async {
+    final uri = Uri.parse('$baseUrl/escrow/dispute').replace(
+      queryParameters: {'shipment_id': shipmentId},
+    );
+    final response = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+    );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as List<dynamic>;
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to fetch escrows (${response.statusCode})');
+      throw Exception('Failed to flag dispute (${response.statusCode}): ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> initEscrow({
+    required String shipmentId,
+    required String buyerId,
+    required String buyerPubkey,
+    required String sellerPubkey,
+    required double amountUsd,
+    required double amountBtc,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/shipments/$shipmentId/escrow/init'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'buyer_id': buyerId,
+        'buyer_pubkey': buyerPubkey,
+        'seller_pubkey': sellerPubkey,
+        'amount_usd': amountUsd,
+        'amount_btc': amountBtc,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to init escrow (${response.statusCode}): ${response.body}');
     }
   }
 
