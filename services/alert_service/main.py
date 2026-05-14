@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results, get_recent_alerts
 from core.config import settings
-from core.database import engine, Base, AsyncSessionLocal
+from core.database import AsyncSessionLocal
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from schemas import CurrentUser
 from models import AlertThreshold
@@ -37,10 +37,9 @@ async def startup_event():
             "API key (or set REQUIRE_SENDGRID_KEY=false for local dev)."
         )
 
-    # Create DB structures and seed defaults
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        
+    # Schema is owned by infra/db/migrations/*.sql, applied via
+    # infra/db/run_migrations.sh. Seed default alert thresholds below — these
+    # are data, not schema, so they stay here.
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(AlertThreshold))
         existing_thresholds = result.scalars().all()

@@ -17,6 +17,27 @@ services:
       - "5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U origin -d origin_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # One-shot migrator: applies infra/db/migrations/*.sql via run_migrations.sh,
+  # which tracks applied migrations in schema_migrations so re-running is a
+  # no-op. Other services should depend on this completing successfully.
+  db-migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://origin:password@postgres:5432/origin_db
+    volumes:
+      - ./infra/db:/work/infra/db:ro
+    working_dir: /work
+    entrypoint: ["bash", "/work/infra/db/run_migrations.sh"]
+    restart: "no"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -65,6 +86,9 @@ services:
       context: ./services/auth-service
     ports:
       - "8001:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - REDIS_URL=redis://redis:6379
@@ -77,6 +101,9 @@ services:
       context: ./services/user-service
     ports:
       - "8002:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
 
@@ -85,6 +112,9 @@ services:
       context: ./services/shipment-service
     ports:
       - "8003:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -96,6 +126,9 @@ services:
       context: ./services/iot-ingestion-service
     ports:
       - "8004:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -109,6 +142,9 @@ services:
       context: ./services/ml_service
     ports:
       - "8005:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -120,6 +156,9 @@ services:
       context: ./services/alert_service
     ports:
       - "8006:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -132,6 +171,9 @@ services:
       context: ./services/escrow-service
     ports:
       - "8007:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -141,6 +183,9 @@ services:
       context: ./services/audit_reporting_service
     ports:
       - "8008:8000"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=postgresql+asyncpg://origin:password@postgres:5432/origin_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092

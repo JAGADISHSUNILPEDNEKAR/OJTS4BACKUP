@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'services/**'
+      - 'infra/db/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 env:
@@ -16,8 +18,39 @@ permissions:
   contents: read
 
 jobs:
+  apply-migrations:
+    name: Apply DB Migrations
+    runs-on: ubuntu-latest
+    # Skip cleanly when no DB URL is configured (e.g. forks, first-time setup)
+    # rather than blocking every image build. CI will surface the skip in logs.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Apply SQL migrations
+        env:
+          # DATABASE_URL must be a libpq URL (postgresql://user:pass@host:port/db)
+          # for the staging RDS instance, reachable from GitHub-hosted runners
+          # (either public with IP allowlist, or via a self-hosted runner inside
+          # the VPC). Configure in repo Settings → Secrets and variables.
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::warning::STAGING_DATABASE_URL secret is not set; skipping migrations."
+            echo "Configure the secret to gate deploys on schema convergence."
+            exit 0
+          fi
+          ./infra/db/run_migrations.sh
+
   build-and-push:
     name: Build & Push Images to ECR
+    needs: apply-migrations
     runs-on: ubuntu-latest
     strategy:
       matrix:

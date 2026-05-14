@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from aiokafka import AIOKafkaProducer
 from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 
-from database import engine, get_db, AsyncSessionLocal, Base
+from database import get_db, AsyncSessionLocal
 from models import Shipment, CustodyEvent
 from schemas import CustodyHandoff, ShipmentResponse, CurrentUser, EscrowInitRequest
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
@@ -32,10 +32,9 @@ async def startup_event():
             "dev default. Set INTERNAL_API_KEY to a real secret in your env."
         )
 
-    # Only for development structure creating - normally Alembic handles this.
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        
+    # Schema is owned by infra/db/migrations/*.sql, applied via
+    # infra/db/run_migrations.sh. Do not create tables from metadata here.
+
     global producer
     producer = AIOKafkaProducer(
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,

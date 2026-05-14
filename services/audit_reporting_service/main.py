@@ -9,7 +9,7 @@ from core.dependencies import get_current_user_from_token
 from consumer import consume_all_topics
 from reporting import router as reporting_router
 from audits import router as audits_router
-from database import engine, AsyncSessionLocal, Base
+from database import AsyncSessionLocal
 from schemas import CurrentUser
 
 logging.basicConfig(level=logging.INFO)
@@ -19,12 +19,9 @@ logger = logging.getLogger("audit-reporting")
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Initializing Audit Reporting Service")
-    # We could await database tables creation here, but let's assume migrations apply them
-    # For the stub, we could also just call Base.metadata.create_all(bind=engine)
-    from database import engine, Base
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
+    # Schema is owned by infra/db/migrations/*.sql, applied via
+    # infra/db/run_migrations.sh. Do not create tables from metadata here.
+
     task = asyncio.create_task(consume_all_topics())
     yield
     # Shutdown

@@ -8,7 +8,7 @@ from typing import List
 from datetime import datetime
 from aiokafka import AIOKafkaProducer
 
-from database import engine, get_db, Base
+from database import get_db
 from models import SensorReading
 from schemas import BulkTelemetryUpload
 from core.vault import VaultClient
@@ -22,9 +22,9 @@ vault = VaultClient()
 
 @app.on_event("startup")
 async def startup_event():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        
+    # Schema is owned by infra/db/migrations/*.sql, applied via
+    # infra/db/run_migrations.sh. Do not create tables from metadata here.
+
     global producer
     producer = AIOKafkaProducer(
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,

@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from database import engine, Base, get_db
+from database import get_db
 from models import User
 from schemas import LoginRequest, RegisterRequest, RefreshRequest, Token
 from core.security import (
@@ -74,9 +74,11 @@ async def startup_event():
     else:
          print("Using default hardcoded JWT signing keys (DEV ONLY).")
 
-    # Auto-create tables in dev (Alembic handles this in prod)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Schema is owned by infra/db/migrations/*.sql, applied by
+    # infra/db/run_migrations.sh (run by compose's db-migrate service locally
+    # and the apply-migrations job in deploy.yml). We intentionally do NOT
+    # create tables from SQLAlchemy metadata here — drift between models and
+    # migrations would silently mask broken migrations in prod.
 
 
 # ── Lockout Helpers ───────────────────────────────────────────────
