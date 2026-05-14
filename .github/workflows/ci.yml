@@ -150,6 +150,69 @@ jobs:
           INTEGRATION_REDIS_URL: redis://localhost:6379
         run: pytest -v --tb=short
 
+  e2e-kafka-audit:
+    name: "e2e: shipment.created → audit_logs"
+    runs-on: ubuntu-latest
+    # Heavier than the rest — builds the audit-reporting-service image and
+    # boots Kafka. Allow up to 15 min; the unit-test path is unaffected.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/e2e/requirements.txt
+
+      - name: Boot postgres + kafka + zookeeper + audit-reporting (compose)
+        run: |
+          # Just the subset we need for the audit pipeline E2E. db-migrate
+          # depends on postgres being healthy, then exits; audit-reporting
+          # depends on db-migrate completing.
+          docker compose up -d --build \
+            postgres zookeeper kafka db-migrate audit-reporting-service
+
+          echo "Waiting for db-migrate to complete..."
+          # docker compose wait exits 0 when the container does — exit code
+          # reflects the migration job's status.
+          docker compose wait db-migrate
+
+          echo "Waiting for audit-reporting-service to be up..."
+          for i in {1..60}; do
+            if docker compose exec -T audit-reporting-service curl -fs http://localhost:8000/health > /dev/null 2>&1; then
+              echo "audit-reporting-service healthy"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run E2E test
+        env:
+          # postgres compose port-forward is 5434
+          E2E_DATABASE_URL: postgresql://origin:password@localhost:5434/origin_db
+          # kafka host-access listener is 29092
+          E2E_KAFKA_BOOTSTRAP: localhost:29092
+        working-directory: tests/e2e
+        run: pytest -v --tb=short
+
+      - name: Dump audit-reporting logs on failure
+        if: failure()
+        run: |
+          echo '== audit-reporting-service ==' && docker compose logs --tail 200 audit-reporting-service || true
+          echo '== kafka ==' && docker compose logs --tail 100 kafka || true
+          echo '== db-migrate ==' && docker compose logs db-migrate || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
   rust-checks:
     name: "rust: crypto-service fmt + clippy + test"
     runs-on: ubuntu-latest
