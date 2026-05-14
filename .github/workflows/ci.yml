@@ -95,6 +95,61 @@ jobs:
         # pattern (E402) doesn't trip CI.
         run: ruff check --select F,E9 services/
 
+  integration-tests:
+    name: "integration: infra smoke (postgres + redis + migrations)"
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: origin
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: origin_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U origin -d origin_db"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install psql + Python deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          python -m pip install --upgrade pip
+          pip install -r tests/integration/requirements.txt
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: postgresql://origin:password@localhost:5432/origin_db
+        run: ./infra/db/run_migrations.sh
+
+      - name: Run integration tests
+        working-directory: tests/integration
+        env:
+          INTEGRATION_DATABASE_URL: postgresql://origin:password@localhost:5432/origin_db
+          INTEGRATION_REDIS_URL: redis://localhost:6379
+        run: pytest -v --tb=short
+
   rust-checks:
     name: "rust: crypto-service fmt + clippy + test"
     runs-on: ubuntu-latest
