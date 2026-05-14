@@ -1,12 +1,43 @@
 import json
 import logging
-from aiokafka import AIOKafkaConsumer
+from datetime import datetime, timezone
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
 from core.config import settings
 from database import AsyncSessionLocal
 from models import AuditLog
 
+CONSUMER_GROUP = "audit-sink-group"
 logger = logging.getLogger("audit-reporting.consumer")
+
+_dlq_producer: AIOKafkaProducer = None
+
+
+async def _publish_to_dlq(original_topic: str, value, error: Exception):
+    """Route a poison message to <original_topic>.dlq. Lazy-inits a
+    dedicated producer the first time it's called.
+    """
+    global _dlq_producer
+    dlq_topic = f"{original_topic}.dlq"
+    payload = {
+        "original_topic": original_topic,
+        "value": value,
+        "error": str(error),
+        "error_type": type(error).__name__,
+        "consumer_group": CONSUMER_GROUP,
+        "failed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        if _dlq_producer is None:
+            _dlq_producer = AIOKafkaProducer(
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                value_serializer=lambda v: json.dumps(v, default=str).encode("utf-8"),
+            )
+            await _dlq_producer.start()
+        await _dlq_producer.send_and_wait(dlq_topic, value=payload)
+        logger.warning(f"Routed poison message to {dlq_topic}: {error}")
+    except Exception as e:
+        logger.error(f"Failed to publish to DLQ {dlq_topic}: {e}")
 
 class SchemaValidator:
     def __init__(self):
@@ -61,14 +92,30 @@ async def consume_all_topics():
     try:
         async for msg in consumer:
             logger.debug(f"Audit log received: {msg.topic} -> {msg.value}")
-            if validator.validate(msg.topic, msg.value):
-                await persist_audit_log(msg.topic, msg.value)
-            else:
-                logger.warning(f"Message from {msg.topic} dropped due to schema mismatch")
+            try:
+                if validator.validate(msg.topic, msg.value):
+                    await persist_audit_log(msg.topic, msg.value)
+                else:
+                    # Schema mismatch is a poison-message signal — route to
+                    # DLQ rather than silently dropping. An auditor needs to
+                    # see what got dropped and why.
+                    await _publish_to_dlq(
+                        msg.topic,
+                        msg.value,
+                        ValueError("schema validation failed"),
+                    )
+            except Exception as e:
+                logger.exception(f"Processing failed for {msg.topic}: {e}")
+                await _publish_to_dlq(msg.topic, msg.value, e)
     except Exception as e:
         logger.error(f"Error consuming messages: {e}")
     finally:
         await consumer.stop()
+        if _dlq_producer is not None:
+            try:
+                await _dlq_producer.stop()
+            except Exception:
+                pass
 
 async def persist_audit_log(topic: str, payload: dict):
     async with AsyncSessionLocal() as session:
