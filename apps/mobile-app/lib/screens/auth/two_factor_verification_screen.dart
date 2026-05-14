@@ -38,7 +38,7 @@ class _TwoFactorVerificationScreenState extends State<TwoFactorVerificationScree
         totpCode: code,
       );
       if (!mounted) return;
-      context.go('/origin-dashboard');
+      context.go(OriginApiClient.instance.homeRouteForRole);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

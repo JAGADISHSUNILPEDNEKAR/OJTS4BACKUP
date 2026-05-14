@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await OriginApiClient.instance.login(email, password);
       if (!mounted) return;
-      context.go('/origin-dashboard');
+      context.go(OriginApiClient.instance.homeRouteForRole);
     } on TotpRequiredException {
       if (!mounted) return;
       context.push('/verify-2fa', extra: {'email': email, 'password': password});

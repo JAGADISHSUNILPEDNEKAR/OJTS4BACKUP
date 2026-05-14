@@ -30,18 +30,54 @@ class OriginApiClient extends ChangeNotifier {
   /// create_access_token). Returns null when there's no token or the JWT
   /// can't be parsed. Does NOT verify the signature — we trust whatever the
   /// server handed us.
-  String? get currentUserId {
+  String? get currentUserId => _claim('sub');
+
+  /// Decodes the JWT's `role` claim populated by auth-service in
+  /// create_access_token. One of: SUPERADMIN, COMPANY, AUDITOR, FARMER,
+  /// LOGISTICS, RETAILER, GOVERNMENT, CONSUMER, USER. Returns "USER" when
+  /// missing so callers can always switch on a non-null value.
+  String get currentRole {
+    final raw = _claim('role');
+    if (raw == null || raw.isEmpty) return 'USER';
+    return raw.toUpperCase();
+  }
+
+  /// Initial landing route for the logged-in user's role. Used by the login
+  /// screen so that e.g. an AUDITOR doesn't get dropped into the FARMER
+  /// dashboard. Keep in sync with the role->tab mapping in
+  /// MainLayoutScreen.
+  String get homeRouteForRole {
+    switch (currentRole) {
+      case 'FARMER':
+        return '/origin-dashboard';
+      case 'AUDITOR':
+      case 'GOVERNMENT':
+        return '/auditor-dashboard';
+      case 'LOGISTICS':
+        return '/distributor-dashboard';
+      case 'COMPANY':
+      case 'RETAILER':
+      case 'SUPERADMIN':
+        return '/admin-dashboard';
+      case 'CONSUMER':
+        return '/consumer-home';
+      default:
+        return '/origin-dashboard';
+    }
+  }
+
+  String? _claim(String name) {
     final token = _accessToken;
     if (token == null) return null;
     final parts = token.split('.');
     if (parts.length != 3) return null;
     try {
       var payload = parts[1];
-      // base64 URL with no padding -> add padding back
       payload = payload.padRight(payload.length + (4 - payload.length % 4) % 4, '=');
       final decoded = utf8.decode(base64Url.decode(payload));
       final claims = jsonDecode(decoded) as Map<String, dynamic>;
-      return claims['sub'] as String?;
+      final v = claims[name];
+      return v?.toString();
     } catch (_) {
       return null;
     }
@@ -63,11 +99,29 @@ class OriginApiClient extends ChangeNotifier {
     if (totpCode != null && totpCode.isNotEmpty) {
       body['totp_code'] = totpCode;
     }
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
+
+    final http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+    } on http.ClientException {
+      // Demo-mode fallback: when the backend is unreachable (no LAN access,
+      // no tunnel, etc.) synthesize a successful login so the public APK
+      // doesn't dead-end at the sign-in page. Downstream screens that hit
+      // real services will still surface their own errors.
+      _accessToken = _stubDemoJwt(email);
+      notifyListeners();
+      return {'access_token': _accessToken, 'demo_mode': true};
+    } on Exception {
+      // Same fallback for SocketException / no route to host — these don't
+      // surface as ClientException on Android.
+      _accessToken = _stubDemoJwt(email);
+      notifyListeners();
+      return {'access_token': _accessToken, 'demo_mode': true};
+    }
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -94,6 +148,39 @@ class OriginApiClient extends ChangeNotifier {
   void logout() {
     _accessToken = null;
     notifyListeners();
+  }
+
+  // Builds an unsigned JWT with a deterministic `sub` derived from the email,
+  // so currentUserId works in demo mode. Not accepted by any real backend.
+  // Role is inferred from the email so RBAC routing works offline.
+  static String _stubDemoJwt(String email) {
+    String b64(String s) =>
+        base64Url.encode(utf8.encode(s)).replaceAll('=', '');
+    final header = b64('{"alg":"none","typ":"JWT"}');
+    final sub = 'demo-${email.hashCode.toUnsigned(32).toRadixString(16)}';
+    final iat = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final role = _roleFromEmail(email);
+    final payload =
+        b64('{"sub":"$sub","email":"$email","role":"$role","iat":$iat}');
+    return '$header.$payload.${b64("demo")}';
+  }
+
+  // Crude keyword match — demo only. Real role comes from the backend JWT.
+  static String _roleFromEmail(String email) {
+    final e = email.toLowerCase();
+    if (e.contains('superadmin') || e.contains('admin')) return 'SUPERADMIN';
+    if (e.contains('auditor') || e.contains('regulator')) return 'AUDITOR';
+    if (e.contains('government') || e.contains('gov')) return 'GOVERNMENT';
+    if (e.contains('logistic') || e.contains('carrier') || e.contains('distributor')) {
+      return 'LOGISTICS';
+    }
+    if (e.contains('retailer')) return 'RETAILER';
+    if (e.contains('company') || e.contains('buyer') || e.contains('corp')) {
+      return 'COMPANY';
+    }
+    if (e.contains('consumer')) return 'CONSUMER';
+    if (e.contains('farmer') || e.contains('producer')) return 'FARMER';
+    return 'USER';
   }
 
   // Generic Authenticated Request

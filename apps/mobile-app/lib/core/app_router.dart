@@ -16,6 +16,9 @@ import '../screens/handover/custody_handoff_screen.dart';
 import '../screens/main_layout_screen.dart';
 import '../screens/dashboard/origin_dashboard_screen.dart';
 import '../screens/dashboard/auditor_dashboard_screen.dart';
+import '../screens/dashboard/distributor_dashboard_screen.dart';
+import '../screens/dashboard/admin_dashboard_screen.dart';
+import '../screens/dashboard/consumer_home_screen.dart';
 import '../screens/wallet/wallet_key_management_screen.dart';
 
 // Phase 3
@@ -138,6 +141,30 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileSettingsScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/distributor-dashboard',
+              builder: (context, state) => const DistributorDashboardScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/admin-dashboard',
+              builder: (context, state) => const AdminDashboardScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/consumer-home',
+              builder: (context, state) => const ConsumerHomeScreen(),
             ),
           ],
         ),
