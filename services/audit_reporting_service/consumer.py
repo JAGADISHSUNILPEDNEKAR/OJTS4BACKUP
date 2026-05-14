@@ -1,7 +1,9 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+from aiokafka.errors import KafkaConnectionError
 
 from core.config import settings
 from database import AsyncSessionLocal
@@ -87,8 +89,23 @@ async def consume_all_topics():
         value_deserializer=lambda x: json.loads(x.decode("utf-8")),
         auto_offset_reset="earliest",
     )
-    
-    await consumer.start()
+
+    # Retry bootstrap until the broker accepts connections. compose only
+    # gates audit-reporting-service on db-migrate, so the kafka broker may
+    # still be coming up when we start; without this loop the task dies
+    # silently on `[Errno 111] Connection refused` and the audit pipeline
+    # is permanently offline until the pod restarts.
+    backoff = 1.0
+    while True:
+        try:
+            await consumer.start()
+            break
+        except KafkaConnectionError as e:
+            logger.warning(
+                f"Kafka not yet reachable ({e}); retrying in {backoff:.1f}s"
+            )
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 10.0)
     try:
         async for msg in consumer:
             logger.debug(f"Audit log received: {msg.topic} -> {msg.value}")
