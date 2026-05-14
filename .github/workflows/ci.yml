@@ -179,10 +179,26 @@ jobs:
           docker compose up -d --build \
             postgres zookeeper kafka db-migrate audit-reporting-service
 
-          echo "Waiting for db-migrate to complete..."
-          # docker compose wait exits 0 when the container does — exit code
-          # reflects the migration job's status.
-          docker compose wait db-migrate
+          # audit-reporting-service has condition: service_completed_successfully
+          # on db-migrate, so `docker compose up -d` above already returned 0
+          # only if migrations completed cleanly. We still inspect the exit code
+          # explicitly so a future compose-file change can't silently skip this
+          # gate — and we avoid `docker compose wait`, which reports "no
+          # containers" when the target service has already exited.
+          echo "Verifying db-migrate exit code..."
+          CID="$(docker compose ps -aq db-migrate)"
+          if [ -z "$CID" ]; then
+            echo "::error::db-migrate container not found"
+            docker compose ps -a
+            exit 1
+          fi
+          EXIT_CODE="$(docker inspect "$CID" --format='{{.State.ExitCode}}')"
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::db-migrate exited with code $EXIT_CODE"
+            docker compose logs db-migrate
+            exit 1
+          fi
+          echo "db-migrate completed successfully"
 
           echo "Waiting for audit-reporting-service to be up..."
           for i in {1..60}; do
