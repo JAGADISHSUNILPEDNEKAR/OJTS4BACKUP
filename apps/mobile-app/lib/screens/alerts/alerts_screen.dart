@@ -1,7 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 
-class AlertsScreen extends StatelessWidget {
-  const AlertsScreen({Key? key}) : super(key: key);
+class AlertsScreen extends StatefulWidget {
+  const AlertsScreen({super.key});
+
+  @override
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  late Future<List<dynamic>> _alertsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _alertsFuture = OriginApiClient.instance.fetchAlerts();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _alertsFuture = OriginApiClient.instance.fetchAlerts();
+    });
+    await _alertsFuture;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -9,58 +31,29 @@ class AlertsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Alerts'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all),
-            onPressed: () {
-              // mark all as read
-            },
-          )
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
-      body: ListView.builder(
-        itemCount: 15,
-        itemBuilder: (context, index) {
-          final isUnread = index < 3;
-          return Container(
-            color: isUnread ? Colors.blue.withOpacity(0.05) : null,
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              leading: Stack(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: _getAlertColor(index).withOpacity(0.2),
-                    child: Icon(_getAlertIcon(index), color: _getAlertColor(index)),
-                  ),
-                  if (isUnread)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2)),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              title: Text(
-                _getAlertTitle(index),
-                style: TextStyle(fontWeight: isUnread ? FontWeight.bold : FontWeight.normal),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(_getAlertSubtitle(index)),
-              ),
-              trailing: Text(
-                '${index * 2 + 1}h ago',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-              ),
-              onTap: () {
-                // view alert details or jump to shipment
+      body: FutureBuilder<List<dynamic>>(
+        future: _alertsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return _ErrorView(message: snapshot.error.toString(), onRetry: _refresh);
+          }
+          final alerts = snapshot.data ?? const <dynamic>[];
+          if (alerts.isEmpty) {
+            return const _EmptyView();
+          }
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              itemCount: alerts.length,
+              itemBuilder: (context, index) {
+                final alert = alerts[index] as Map<String, dynamic>;
+                return _AlertTile(alert: alert);
               },
             ),
           );
@@ -68,32 +61,132 @@ class AlertsScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Color _getAlertColor(int index) {
-    if (index % 4 == 0) return Colors.red;
-    if (index % 4 == 1) return Colors.orange;
-    if (index % 4 == 2) return Colors.green;
-    return Colors.blue;
+class _AlertTile extends StatelessWidget {
+  final Map<String, dynamic> alert;
+  const _AlertTile({required this.alert});
+
+  ({Color color, IconData icon}) _styleFor(String severity) {
+    switch (severity.toUpperCase()) {
+      case 'CRITICAL':
+        return (color: Colors.red, icon: Icons.error_outline);
+      case 'WARNING':
+        return (color: Colors.orange, icon: Icons.warning_amber_rounded);
+      default:
+        return (color: Colors.blue, icon: Icons.info_outline);
+    }
   }
 
-  IconData _getAlertIcon(int index) {
-    if (index % 4 == 0) return Icons.error_outline;
-    if (index % 4 == 1) return Icons.warning_amber_rounded;
-    if (index % 4 == 2) return Icons.check_circle_outline;
-    return Icons.info_outline;
+  String _relativeTime(String? iso) {
+    if (iso == null) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    final diff = DateTime.now().toUtc().difference(dt.toUtc());
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 
-  String _getAlertTitle(int index) {
-    if (index % 4 == 0) return 'Temperature Exceeded';
-    if (index % 4 == 1) return 'Shipment Delayed';
-    if (index % 4 == 2) return 'Shipment Delivered';
-    return 'New Policy Update';
-  }
+  @override
+  Widget build(BuildContext context) {
+    final severity = alert['severity']?.toString() ?? 'INFO';
+    final shipmentId = alert['shipment_id']?.toString() ?? '';
+    final score = alert['score'];
+    final timestamp = alert['timestamp']?.toString();
+    final style = _styleFor(severity);
+    final shortId = shipmentId.length >= 8 ? shipmentId.substring(0, 8) : shipmentId;
+    final scoreText = score is num ? ' • score ${(score * 100).toStringAsFixed(1)}%' : '';
 
-  String _getAlertSubtitle(int index) {
-    if (index % 4 == 0) return 'Shipment #100$index exceeded safe temperature limits.';
-    if (index % 4 == 1) return 'Shipment #100$index expected to be delayed by 2 hours.';
-    if (index % 4 == 2) return 'Shipment #100$index has been successfully delivered to Destination.';
-    return 'Please review the updated safety guidelines for transits.';
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      leading: CircleAvatar(
+        backgroundColor: style.color.withValues(alpha: 0.2),
+        child: Icon(style.icon, color: style.color),
+      ),
+      title: Text(
+        severity,
+        style: TextStyle(fontWeight: FontWeight.bold, color: style.color),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4.0),
+        child: Text(
+          'Shipment $shortId$scoreText',
+          style: const TextStyle(fontSize: 13),
+        ),
+      ),
+      trailing: Text(
+        _relativeTime(timestamp),
+        style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+      ),
+      onTap: shipmentId.isEmpty
+          ? null
+          : () => context.push('/shipment-details/$shipmentId'),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 12),
+            const Text(
+              'Failed to load alerts',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyView extends StatelessWidget {
+  const _EmptyView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.notifications_none, size: 48, color: Colors.white54),
+            SizedBox(height: 12),
+            Text('No alerts', style: TextStyle(fontSize: 16)),
+            SizedBox(height: 4),
+            Text(
+              'You\'re all caught up',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
