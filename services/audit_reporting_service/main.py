@@ -50,6 +50,9 @@ app = FastAPI(
 app.include_router(reporting_router, prefix="/api/v1/reports")
 app.include_router(audits_router, prefix="/api/v1/audits")
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}

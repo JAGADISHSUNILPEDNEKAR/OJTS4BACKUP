@@ -12,6 +12,15 @@ from core.config import settings
 
 app = FastAPI(title="Origin User Service")
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "user-service"}
+
+
 producer: AIOKafkaProducer = None
 
 @app.on_event("startup")

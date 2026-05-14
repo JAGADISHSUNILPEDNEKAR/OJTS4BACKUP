@@ -11,6 +11,9 @@ logger = logging.getLogger("ml-service")
 
 app = FastAPI(title="Origin ML Service")
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
 consumer_task = None
 
 class PrecheckRequest(BaseModel):

@@ -15,6 +15,15 @@ from core.config import settings
 app = FastAPI(title="Origin IoT Ingestion Service")
 logging.basicConfig(level=logging.INFO)
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "iot-ingestion-service"}
+
+
 producer: AIOKafkaProducer = None
 vault = VaultClient()
 

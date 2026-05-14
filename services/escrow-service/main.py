@@ -16,3 +16,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Origin Escrow Service", lifespan=lifespan)
 app.include_router(escrow_router, prefix="/api/v1/escrow")
+
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "escrow-service"}

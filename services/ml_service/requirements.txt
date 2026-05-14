@@ -13,3 +13,4 @@ scikit-learn
 joblib
 httpx
 pytest-asyncio
+prometheus-fastapi-instrumentator

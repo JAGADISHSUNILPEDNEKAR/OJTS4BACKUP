@@ -18,6 +18,15 @@ from core.pdf_generator import generate_shipment_proof
 
 app = FastAPI(title="Origin Shipment Service")
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "shipment-service"}
+
+
 producer: AIOKafkaProducer = None
 
 @app.on_event("startup")

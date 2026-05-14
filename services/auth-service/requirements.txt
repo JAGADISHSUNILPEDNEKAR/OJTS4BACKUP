@@ -13,3 +13,4 @@ redis[hiredis]
 cryptography
 authlib
 httpx
+prometheus-fastapi-instrumentator

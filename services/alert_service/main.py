@@ -15,6 +15,9 @@ logger = logging.getLogger("alert-service")
 
 app = FastAPI(title="Origin Alert Service")
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
 class Alert(BaseModel):
     shipment_id: str
     score: float

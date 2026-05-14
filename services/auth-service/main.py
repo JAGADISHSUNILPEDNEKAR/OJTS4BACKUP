@@ -19,6 +19,16 @@ app = FastAPI(title="Origin Auth Service")
 # Authlib needs a session middleware for OAuth2 state
 app.add_middleware(SessionMiddleware, secret_key=settings.PRIVATE_KEY)
 
+# /metrics endpoint + per-route request count / latency / status code
+# histograms. Pods are scraped by Prometheus (see infra/k8s/base/observability.yaml).
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "auth-service"}
+
 oauth = OAuth()
 oauth.register(
     name='google',

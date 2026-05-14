@@ -11,3 +11,4 @@ PyJWT
 cryptography
 reportlab
 boto3
+prometheus-fastapi-instrumentator
