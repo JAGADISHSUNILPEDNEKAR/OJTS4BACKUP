@@ -41,6 +41,23 @@ psql_exec() {
         "$@"
 }
 
+# TimescaleDB (and the stock postgres image) briefly accepts connections during
+# initdb, then restarts the postmaster — `pg_isready` can flip green during the
+# first phase while the second-phase startup still rejects clients with
+# `FATAL: the database system is starting up`. Retry a trivial SELECT until the
+# server accepts real queries before we begin migrating.
+echo "==> Waiting for postgres to accept queries"
+for attempt in $(seq 1 60); do
+    if psql_exec -c 'SELECT 1' >/dev/null 2>&1; then
+        break
+    fi
+    if [[ ${attempt} -eq 60 ]]; then
+        echo "error: postgres did not become ready within 60 attempts" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
 echo "==> Ensuring schema_migrations table exists"
 psql_exec -c "
     CREATE TABLE IF NOT EXISTS schema_migrations (

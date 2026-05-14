@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS shipments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     farmer_id UUID REFERENCES users(id),
+    current_custodian_id UUID REFERENCES users(id),
     destination VARCHAR(255) NOT NULL,
     status VARCHAR(50) DEFAULT 'CREATED',
     manifest_s3_key VARCHAR(512),
@@ -9,3 +10,4 @@ CREATE TABLE IF NOT EXISTS shipments (
 );
 
 CREATE INDEX idx_shipments_farmer_id ON shipments(farmer_id);
+CREATE INDEX idx_shipments_current_custodian_id ON shipments(current_custodian_id);
