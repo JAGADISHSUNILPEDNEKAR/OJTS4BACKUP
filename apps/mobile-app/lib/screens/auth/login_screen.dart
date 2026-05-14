@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api_client.dart';
 import '../../widgets/primary_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,10 +14,31 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
-  void _handleLogin() {
-    // Proceed to 2FA verification
-    context.push('/verify-2fa');
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await OriginApiClient.instance.login(email, password);
+      if (!mounted) return;
+      context.push('/verify-2fa');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -121,6 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
               
               PrimaryButton(
                 text: 'Log In →',
+                isLoading: _isLoading,
                 onPressed: _handleLogin,
               ),
               const SizedBox(height: 32),

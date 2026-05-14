@@ -1,11 +1,21 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// API Client for the Origin Mobile Application.
-/// Provides architectural parity with the Web App's api.ts.
-class OriginApiClient {
-  static const String baseUrl = 'http://localhost/api/v1';
+/// Singleton with ChangeNotifier-based auth state.
+/// Access via `OriginApiClient.instance`.
+class OriginApiClient extends ChangeNotifier {
+  OriginApiClient._();
+  static final OriginApiClient instance = OriginApiClient._();
+
+  // Mac LAN IP — phone reaches backend over Wi-Fi.
+  // Change this if the laptop's IP changes (e.g. new Wi-Fi network).
+  static const String baseUrl = 'http://10.110.156.5/api/v1';
+
   String? _accessToken;
+  String? get accessToken => _accessToken;
+  bool get isAuthenticated => _accessToken != null;
 
   // Authentication
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -16,12 +26,18 @@ class OriginApiClient {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      _accessToken = data['access_token'];
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      _accessToken = data['access_token'] as String?;
+      notifyListeners();
       return data;
     } else {
-      throw Exception('Login failed: ${response.body}');
+      throw Exception('Login failed (${response.statusCode}): ${response.body}');
     }
+  }
+
+  void logout() {
+    _accessToken = null;
+    notifyListeners();
   }
 
   // Generic Authenticated Request
@@ -39,9 +55,9 @@ class OriginApiClient {
   Future<List<dynamic>> fetchShipments() async {
     final response = await _authGet('shipments');
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as List<dynamic>;
     } else {
-      throw Exception('Failed to fetch shipments');
+      throw Exception('Failed to fetch shipments (${response.statusCode})');
     }
   }
 
@@ -49,10 +65,9 @@ class OriginApiClient {
   Future<List<dynamic>> fetchEscrows() async {
     final response = await _authGet('escrows');
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as List<dynamic>;
     } else {
-      // In parity with the hardened web-app, we throw here instead of returning mocks
-      throw Exception('Failed to fetch escrows');
+      throw Exception('Failed to fetch escrows (${response.statusCode})');
     }
   }
 
@@ -60,9 +75,9 @@ class OriginApiClient {
   Future<List<dynamic>> fetchAlerts() async {
     final response = await _authGet('alerts');
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as List<dynamic>;
     } else {
-      throw Exception('Failed to fetch alerts');
+      throw Exception('Failed to fetch alerts (${response.statusCode})');
     }
   }
 
