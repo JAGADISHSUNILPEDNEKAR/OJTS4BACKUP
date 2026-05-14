@@ -10,7 +10,6 @@ async def override_current_user():
 
 app.dependency_overrides[get_current_user_from_token] = override_current_user
 
-from evaluator.threshold import evaluate
 
 @pytest.mark.asyncio
 async def test_health_check():

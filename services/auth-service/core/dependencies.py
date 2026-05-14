@@ -7,7 +7,6 @@ from sqlalchemy.future import select
 from typing import List
 
 from .config import settings
-from .security import ALGORITHM
 from schemas import TokenData
 from database import get_db
 from models import User

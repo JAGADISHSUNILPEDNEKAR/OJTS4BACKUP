@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from main import app, get_db_with_rls
 from database import get_db
 from models import User
-from core.dependencies import get_current_user_from_token, RoleChecker
+from core.dependencies import get_current_user_from_token
 
 MOCK_USER_ID = uuid.uuid4()
 
@@ -120,10 +120,9 @@ async def test_list_users_admin_access():
     # This is tricky because RoleChecker is a class. We override the dependency itself in main.py
     # But since RoleChecker(["ADMIN"]) is a specific instance, we need to handle it carefully.
     
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        # Note: In a real test we'd need to properly mock the RoleChecker dependency
-        # For now, let's just test get_my_profile is solid.
-        pass
+    # Placeholder: properly mocking RoleChecker(["ADMIN"]) requires overriding
+    # the specific instance, not the class. Real coverage lives in the auth
+    # tests; here we just ensure dependency overrides clean up.
     app.dependency_overrides.clear()
 
 @pytest.mark.asyncio

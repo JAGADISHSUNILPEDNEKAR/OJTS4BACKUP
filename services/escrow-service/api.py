@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from escrow import process_fund_hold, PSBTTriggerRequest, THRESHOLD, finalize_escrow
 from database import AsyncSessionLocal
 from models import EscrowState
-from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
+from core.dependencies import RoleChecker, UserRole
 from schemas import CurrentUser
 
 router = APIRouter()

@@ -2,7 +2,6 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.dependencies import get_current_user_from_token

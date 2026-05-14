@@ -2,7 +2,6 @@ import logging
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from core.config import settings
-import httpx
 
 logger = logging.getLogger(__name__)
 

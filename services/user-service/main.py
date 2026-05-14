@@ -1,13 +1,11 @@
 import json
-import asyncio
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func
 from aiokafka import AIOKafkaProducer
 
-from database import engine, get_db, AsyncSessionLocal, Base
-from models import User, Organization
+from database import get_db, AsyncSessionLocal
+from models import User
 from schemas import UserResponse, UserUpdate
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from core.config import settings

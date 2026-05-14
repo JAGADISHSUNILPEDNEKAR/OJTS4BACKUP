@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import random
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends
 from core.config import settings

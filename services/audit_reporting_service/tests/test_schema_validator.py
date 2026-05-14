@@ -1,4 +1,3 @@
-import pytest
 from consumer import SchemaValidator
 from core.config import settings
 

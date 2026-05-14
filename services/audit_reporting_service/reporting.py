@@ -2,15 +2,14 @@ import io
 import logging
 import boto3
 import csv
-from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Response
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import String, desc
 
 from core.config import settings
-from core.dependencies import get_current_user_from_token, get_db_with_rls, RoleChecker, UserRole
+from core.dependencies import get_db_with_rls, RoleChecker, UserRole
 from models import AuditLog
 from schemas import CurrentUser
 
@@ -91,7 +90,7 @@ async def generate_pdf_proof(
     c = canvas.Canvas(pdf_buffer, pagesize=letter)
     
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, 750, f"Origin System - Immutable Proof")
+    c.drawString(50, 750, "Origin System - Immutable Proof")
     
     c.setFont("Helvetica", 12)
     c.drawString(50, 720, f"Shipment ID: {shipment_id}")

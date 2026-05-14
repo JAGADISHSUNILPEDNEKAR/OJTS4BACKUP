@@ -88,11 +88,12 @@ jobs:
         run: pip install ruff
 
       - name: Lint
-        # Start narrow: F821 (undefined name — guaranteed runtime error)
-        # and E9 (syntax errors). The codebase currently has ~40 F401
-        # unused-import findings that should be cleaned up in a separate
-        # sweep; expand the rule set after that lands.
-        run: ruff check --select F821,E9 services/
+        # Full pyflakes (F) + syntax errors (E9). F catches the bug classes
+        # that matter at runtime: undefined names, unused imports/vars,
+        # shadowed bindings, broken format strings. We deliberately skip
+        # the E/W style rules so the test-file `mock asyncpg before import`
+        # pattern (E402) doesn't trip CI.
+        run: ruff check --select F,E9 services/
 
   web-checks:
     name: "web-app: eslint + tsc"

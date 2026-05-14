@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
 
-from core.dependencies import get_current_user_from_token, get_db_with_rls, RoleChecker, UserRole
+from core.dependencies import get_db_with_rls, RoleChecker, UserRole
 from models import AuditLog
 from schemas import CurrentUser
 

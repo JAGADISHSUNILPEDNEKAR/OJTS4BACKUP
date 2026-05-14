@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from core.kafka import start_kafka_producer, stop_kafka_producer, consume_ml_results, get_recent_alerts
 from core.config import settings
 from core.database import AsyncSessionLocal
-from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
+from core.dependencies import RoleChecker, UserRole
 from schemas import CurrentUser
 from models import AlertThreshold
 from sqlalchemy.future import select

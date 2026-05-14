@@ -1,11 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 import logging
 import hmac
 import hashlib
-from typing import List
-from datetime import datetime
 from aiokafka import AIOKafkaProducer
 
 from database import get_db

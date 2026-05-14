@@ -1,10 +1,8 @@
 import uuid
-import json
 from datetime import timedelta
 from authlib.integrations.starlette_client import OAuth
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from starlette.middleware.sessions import SessionMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 

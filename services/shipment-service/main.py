@@ -1,7 +1,6 @@
 import uuid
 import json
 import asyncio
-from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -9,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from aiokafka import AIOKafkaProducer
 from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 
-from database import get_db, AsyncSessionLocal
+from database import AsyncSessionLocal
 from models import Shipment, CustodyEvent
 from schemas import CustodyHandoff, ShipmentResponse, CurrentUser, EscrowInitRequest
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
@@ -176,7 +175,7 @@ async def custody_handoff(
     try:
         vk = VerifyingKey.from_string(bytes.fromhex(handoff.public_key), curve=NIST256p)
         vk.verify(bytes.fromhex(handoff.ecdsa_signature), message)
-    except (BadSignatureError, ValueError) as e:
+    except (BadSignatureError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid ECDSA signature")
         
     # 2. Save custody event to DB
