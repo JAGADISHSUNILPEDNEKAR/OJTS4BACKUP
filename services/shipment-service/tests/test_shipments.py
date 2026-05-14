@@ -25,14 +25,14 @@ vk = sk.verifying_key
 public_key_hex = vk.to_string().hex()
 
 class MockResult:
-    def __init__(self, shipment):
-        self.shipment = shipment
+    def __init__(self, row):
+        self.row = row
     def scalars(self):
         class Scalars:
             def first(self_inner):
-                return self.shipment
+                return self.row
             def all(self_inner):
-                return [self.shipment]
+                return [self.row] if self.row is not None else []
         return Scalars()
 
 class MockSession:
@@ -48,10 +48,19 @@ class MockSession:
         obj.created_at = datetime.utcnow()
         obj.updated_at = datetime.utcnow()
     async def execute(self, *args, **kwargs):
+        query_str = str(args[0])
+
         # Handle RLS set_config calls
-        if "set_config" in str(args[0]):
+        if "set_config" in query_str:
             return None
-            
+
+        # Custody handoff queries the CustodianDevice TOFU registry; return
+        # None so the test exercises the first-registration path. Tests that
+        # want to exercise the mismatch branch can override get_db_with_rls
+        # with their own session.
+        if "custodian_devices" in query_str:
+            return MockResult(None)
+
         shipment = Shipment(
             id=MOCK_SHIPMENT_ID,
             farmer_id=MOCK_FARMER_ID,

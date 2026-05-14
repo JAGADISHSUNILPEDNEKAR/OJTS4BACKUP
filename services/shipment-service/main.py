@@ -10,7 +10,7 @@ from aiokafka import AIOKafkaProducer
 from ecdsa import VerifyingKey, NIST256p, BadSignatureError
 
 from database import AsyncSessionLocal
-from models import Shipment, CustodyEvent
+from models import Shipment, CustodyEvent, CustodianDevice
 from schemas import CustodyHandoff, ShipmentResponse, CurrentUser, EscrowInitRequest
 from core.dependencies import get_current_user_from_token, RoleChecker, UserRole
 from core.config import settings
@@ -184,13 +184,41 @@ async def custody_handoff(
 
     previous_custodian_id = shipment.current_custodian_id
 
-    # 1. ECDSA Signature Validation
+    # 1. ECDSA Signature Validation — verify the signature is valid for the
+    # submitted pubkey AND that the pubkey is the one registered to this
+    # custodian. The signature-only check was attacker-trivial: anyone with
+    # a stolen JWT could submit a fresh pubkey + matching signature, and the
+    # backend would silently forward the chain of custody to their key.
     message = f"{shipment_id}:{str(handoff.custodian_id)}".encode('utf-8')
     try:
         vk = VerifyingKey.from_string(bytes.fromhex(handoff.public_key), curve=NIST256p)
         vk.verify(bytes.fromhex(handoff.ecdsa_signature), message)
     except (BadSignatureError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid ECDSA signature")
+
+    # 2. Trust-on-first-use pubkey registration. The current custodian's
+    # registered device pubkey is looked up; if missing, this signature
+    # registers it (first handoff binds the device). If present, it MUST
+    # match what was submitted — a mismatch means either a device key
+    # rotation that wasn't operationally approved, or a JWT-stolen attacker
+    # using their own device.
+    submitted_pubkey = handoff.public_key.lower()
+    device_q = await db.execute(
+        select(CustodianDevice).where(CustodianDevice.user_id == current_user.id)
+    )
+    device = device_q.scalars().first()
+
+    if device is None:
+        db.add(CustodianDevice(user_id=current_user.id, public_key=submitted_pubkey))
+    elif device.public_key.lower() != submitted_pubkey:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Submitted device pubkey does not match the registered pubkey "
+                "for this custodian. If this device was lost, an operator must "
+                "rotate the registered key before further handoffs are accepted."
+            ),
+        )
         
     # 2. Save custody event to DB
     new_event = CustodyEvent(

@@ -21,7 +21,7 @@ class Shipment(Base):
 
 class CustodyEvent(Base):
     __tablename__ = "custody_events"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     shipment_id = Column(UUID(as_uuid=True), ForeignKey("shipments.id", ondelete="CASCADE"))
     previous_custodian_id = Column(UUID(as_uuid=True), nullable=False)
@@ -29,5 +29,18 @@ class CustodyEvent(Base):
     ecdsa_signature = Column(String(255), nullable=False)
     public_key = Column(String(255), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     shipment = relationship("Shipment", back_populates="custody_events")
+
+
+class CustodianDevice(Base):
+    """Trust-on-first-use registry of the ECDSA pubkey each custodian's mobile
+    device persists in SecureStorage. Backed by migration
+    infra/db/migrations/012_custodian_devices.sql.
+    """
+    __tablename__ = "custodian_devices"
+
+    user_id = Column(UUID(as_uuid=True), primary_key=True)
+    public_key = Column(String(255), nullable=False)
+    registered_at = Column(DateTime(timezone=True), server_default=func.now())
+    rotated_at = Column(DateTime(timezone=True), nullable=True)
